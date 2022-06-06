@@ -46,4 +46,4 @@ class ReplayBuffer:
         )
     
     def ready(self, batch_size):
-        return (batch_size < self.entries)
+        return (batch_size <= self.entries)
