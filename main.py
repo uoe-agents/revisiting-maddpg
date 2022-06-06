@@ -3,12 +3,18 @@ import gym, rware
 from buffer import ReplayBuffer
 import numpy as np
 from make_env import make_env
+import jax
+import jax.random as jrand
+
+jax.config.update('jax_platform_name', 'cpu')
 
 env = make_env("simple_adversary")
 # env = gym.make("rware-small-4ag-v1")
 N = len(env.observation_space)
 obs = env.reset()
 observation_dims = np.array([os.shape[0] for os in env.observation_space])
+
+env.step(env.action_space.sample())
 
 buffer = ReplayBuffer(10e6, observation_dims)
 
@@ -26,4 +32,4 @@ for ii in range(100):
 
     obs = nobs
 
-print(buffer.sample(5))
+print(buffer.sample(5, jrand.PRNGKey(123)))
