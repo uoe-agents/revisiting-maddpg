@@ -47,7 +47,7 @@ class Agent:
         )
 
     def act(self, obs):
-        
+        ...
         # actions = self.behaviour_actor(obs)
         # noise = jrand.normal(self.act_key, shape=actions.shape)
         # return actions + noise
