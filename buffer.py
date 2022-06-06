@@ -1,6 +1,6 @@
 import numpy as np
-from numpy.random import default_rng
-rng = default_rng()
+import jax.numpy as jnp
+import jax.random as jrand
 
 class ReplayBuffer:
     def __init__(self, capacity: int | float, obs_dims): # Todo fix types
@@ -27,14 +27,16 @@ class ReplayBuffer:
         
         self.entries += 1
 
-    def sample(self, batch_size):
+    def sample(self, batch_size, key):
         if (batch_size > self.entries): # Not ready yet!
             return None
 
-        idxs = rng.choice(
-            np.min((self.entries, self.capacity)),
-            size=(batch_size,),replace=False
+        idxs = jrand.choice(key,
+            jnp.min(jnp.array((self.entries, self.capacity))),
+            shape=(batch_size,),
+            replace=False,
         )
+
         return (
             self.memory_obs[idxs],
             self.memory_acts[idxs],
@@ -42,3 +44,6 @@ class ReplayBuffer:
             self.memory_nobs[idxs],
             self.memory_dones[idxs],
         )
+    
+    def ready(self, batch_size):
+        return (batch_size < self.entries)
