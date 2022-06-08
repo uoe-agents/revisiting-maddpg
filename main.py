@@ -15,7 +15,11 @@ def train(config: argparse.Namespace):
     env = make_env(config.env)
     n_agents = env.n_agents
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
-    buffer = ReplayBuffer(10e6, observation_dims) # TODO: change format of the replay buffer input??
+    buffer = ReplayBuffer(
+        capacity=10e6,
+        obs_dims=observation_dims, # TODO: change format of the replay buffer input??
+        batch_size=config.batch_size
+    )
 
     agents = [
         Agent(
@@ -49,9 +53,9 @@ def train(config: argparse.Namespace):
 
             obs = nobs
 
-            if (buffer.ready(config.batch_size)):
-                ...
-                # MADDPG.update()
+            if buffer.ready():
+                sample = buffer.sample(key=jrand.PRNGKey(0)) # TODO: fix rng key
+                print(sample)
 
     env.close()
 
@@ -60,7 +64,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", default="simple_adversary")
     parser.add_argument("--seed", default=1, type=int)
-    parser.add_argument("--n_episodes", default=10, type=int)
+    parser.add_argument("--n_episodes", default=20, type=int)
     parser.add_argument("--episode_length", default=100, type=int)
     parser.add_argument("--batch_size", default=1024, type=int)
     parser.add_argument("--render", default=False, type=bool)

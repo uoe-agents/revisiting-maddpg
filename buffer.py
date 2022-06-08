@@ -3,9 +3,11 @@ import jax.numpy as jnp
 import jax.random as jrand
 
 class ReplayBuffer:
-    def __init__(self, capacity: int | float, obs_dims): # Todo fix types
+    def __init__(self, capacity: int | float, obs_dims, batch_size: int): # Todo fix types
         self.capacity = int(capacity)
         self.entries = 0
+
+        self.batch_size = batch_size
 
         self.obs_dims = obs_dims
         self.n_agents = len(obs_dims)
@@ -27,13 +29,12 @@ class ReplayBuffer:
         
         self.entries += 1
 
-    def sample(self, batch_size, key):
-        if (batch_size > self.entries): # Not ready yet!
-            return None
+    def sample(self, key):
+        if not self.ready(): return None
 
         idxs = jrand.choice(key,
             jnp.min(jnp.array((self.entries, self.capacity))),
-            shape=(batch_size,),
+            shape=(self.batch_size,),
             replace=False,
         )
 
@@ -45,5 +46,5 @@ class ReplayBuffer:
             self.memory_dones[idxs],
         )
     
-    def ready(self, batch_size):
-        return (batch_size <= self.entries)
+    def ready(self):
+        return (self.batch_size <= self.entries)
