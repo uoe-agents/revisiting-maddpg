@@ -1,17 +1,15 @@
 import jax.numpy as jnp
 import jax.random as jrand
 import jax.nn as jnn
-
-key = jrand.PRNGKey(0)
-
-def gumbel_noise(shape, key, eps=1e-20):
-    uu = jrand.uniform(key, shape)
-    return -jnp.log( -jnp.log( uu + eps) + eps)
+import jax.lax as jlax
 
 def gumbel_softmax(logits, key, temperature=1.0, st=True):
-    yy = logits + gumbel_noise(logits.shape, key)
+    gumbels = jrand.gumbel(key, logits.shape)
+    y_soft = jnn.softmax( (logits + gumbels) / temperature )
+    
     if st:
-        return jnn.one_hot(jnp.argmax(yy), yy.shape[0])
+        y_hard = jnn.one_hot(jnp.argmax(y_soft), num_classes=y_soft.shape[-1])
+        # See https://github.com/pytorch/pytorch/blob/32593ef2dd26e32ed44d3c03d3f5de4a42eb149a/torch/nn/functional.py#L1797
+        return y_hard - jlax.stop_gradient(y_soft) + y_soft
     else:
-        return jnn.softmax(yy / temperature) #, dim=1) #TODO: Sort out batching
-
+        return y_soft
