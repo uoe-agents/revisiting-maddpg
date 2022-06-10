@@ -8,10 +8,9 @@ from make_env import make_env
 import jax
 import jax.random as jrand
 from agent import Agent
-
 jax.config.update('jax_platform_name', 'cpu')
 
-def train(config: argparse.Namespace):
+def train(config: argparse.Namespace, key):
     env = make_env(config.env)
     n_agents = env.n_agents
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
@@ -21,6 +20,7 @@ def train(config: argparse.Namespace):
         batch_size=config.batch_size
     )
 
+    key, *agent_keys = jrand.split(key,num=n_agents+1)
     agents = [
         Agent(
             agent_idx=ii,
@@ -30,6 +30,7 @@ def train(config: argparse.Namespace):
             hidden_dim_width=config.hidden_dim_width,
             critic_lr=config.critic_lr,
             actor_lr=config.actor_lr,
+            agent_key=agent_keys[ii],
         )
         for ii in range(n_agents)
     ]
@@ -37,9 +38,8 @@ def train(config: argparse.Namespace):
 
     for epi_i in tqdm(range(config.n_episodes)):
         obs = env.reset()
-        for _ in range(config.episode_length):
+        for tt in range(config.episode_length):
             if (config.render): env.render()
-            #acts = env.action_space.sample() # TODO: acts should come from agent policies
             acts = [agents[ii].act(obs[ii]) for ii in range(n_agents)]
             nobs, rwds, dones, _ = env.step(acts)
 
@@ -53,9 +53,13 @@ def train(config: argparse.Namespace):
 
             obs = nobs
 
-            if buffer.ready():
-                sample = buffer.sample(key=jrand.PRNGKey(0)) # TODO: fix rng key
-                print(sample)
+            if buffer.ready() and (tt % 1000 == 0): # TODO: improve this
+                sample = buffer.sample()
+
+                for agent in agents:
+                    agent.update(sample)
+
+                
 
     env.close()
 
@@ -66,7 +70,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--n_episodes", default=20, type=int)
     parser.add_argument("--episode_length", default=100, type=int)
-    parser.add_argument("--batch_size", default=1024, type=int)
+    parser.add_argument("--batch_size", default=1, type=int)
     parser.add_argument("--render", default=False, type=bool)
     parser.add_argument("--hidden_dim_width", default=64, type=int)
     parser.add_argument("--critic_lr", default=1e-3, type=float)
@@ -74,4 +78,5 @@ if __name__ == "__main__":
 
     config = parser.parse_args()
     
-    train(config)
+    base_key = jrand.PRNGKey(config.seed)
+    train(config, base_key)
