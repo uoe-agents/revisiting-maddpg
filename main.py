@@ -17,7 +17,8 @@ def train(config: argparse.Namespace, key):
     buffer = ReplayBuffer(
         capacity=10e6,
         obs_dims=observation_dims, # TODO: change format of the replay buffer input??
-        batch_size=config.batch_size
+        batch_size=config.batch_size,
+        key=key,
     )
 
     key, *agent_keys = jrand.split(key,num=n_agents+1)
