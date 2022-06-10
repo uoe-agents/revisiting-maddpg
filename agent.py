@@ -8,7 +8,6 @@ import haiku as hk
 import equinox as eqx
 import optax
 
-KEY = jrand.PRNGKey(123456)
 
 class Agent:
     # def __init__(self, actor_dim, critic_dim, n_agents, n_actions, agent_idx, key,
@@ -20,6 +19,7 @@ class Agent:
         hidden_dim_width,
         critic_lr,
         actor_lr,
+        agent_key,
         tau=0.01,
         # more TODO
     ):
@@ -27,7 +27,8 @@ class Agent:
         # self.critic_lr = critic_lr,
         # self.actor_lr = actor_lr,
         # -----------
-        _, *subkeys = jrand.split(KEY, num=3)
+        self.key = agent_key
+        self.key, *subkeys = jrand.split(self.key, num=3)
 
         # ***** POLICY *****
         policy_in_size = observation_space[self.agent_idx].shape[0]
@@ -73,13 +74,16 @@ class Agent:
         )
 
     def act(self, obs):
-        # TODO fix PRNG key
-        _, act_key = jrand.split(KEY)
+        self.key, act_key = jrand.split(self.key)
         actions_one_hot = utils.gumbel_softmax(self.behaviour_policy(obs), act_key, temperature=0.8, st=True)
         return jnp.argmax(actions_one_hot)
 
-    def update(self, key):
-        return None # temp
+    def update(self, sample):
+        print(f"**** Updating agent {self.agent_idx}!!! ****")
+        print(sample)
+        input()
+        return None
+
         loss_fn = eqx.filter_value_and_grad(...)#(batch_loss_fn????)
         loss, grads = loss_fn(self.behaviour_policy)#, weight, init
         updates, self.policy_optim_state = self.policy_optim.update(grads, self.policy_optim_state)
