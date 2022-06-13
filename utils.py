@@ -1,9 +1,12 @@
+import jax
 import jax.numpy as jnp
 import jax.random as jrand
 import jax.nn as jnn
 import jax.lax as jlax
 
 def gumbel_softmax(logits, key, temperature=1.0, st=True):
+    # TODO: Explore how this could be written with a custom jax derivative expression (jax.custom_jvp)
+
     gumbels = jrand.gumbel(key, logits.shape)
     y_soft = jnn.softmax( (logits + gumbels) / temperature )
     
@@ -13,3 +16,20 @@ def gumbel_softmax(logits, key, temperature=1.0, st=True):
         return y_hard - jlax.stop_gradient(y_soft) + y_soft
     else:
         return y_soft
+
+def _incremental_update(old, new, tau):
+    if new is None:
+        return old
+    else:
+        return (1 - tau) * old + tau * new
+
+def _is_none(x):
+    return x is None
+
+def soft_update(target_model, behaviour_model, tau):
+    return jax.tree_map(
+        lambda old, new : _incremental_update(old, new, tau),
+        target_model,
+        behaviour_model,
+        is_leaf=_is_none,
+    )
