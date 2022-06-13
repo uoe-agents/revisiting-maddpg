@@ -14,19 +14,24 @@ class ReplayBuffer:
         self.obs_dims = obs_dims
         self.n_agents = len(obs_dims)
 
-        self.memory_obs = np.zeros((self.capacity, sum(self.obs_dims)))
+        self.memory_obs = {}
+        self.memory_nobs = {}
+        for ii in range(self.n_agents):
+            self.memory_obs[ii] = np.zeros((self.capacity, obs_dims[ii]))
+            self.memory_nobs[ii] = np.zeros((self.capacity, obs_dims[ii]))
+
         self.memory_acts = np.zeros((self.capacity, self.n_agents))
         self.memory_rwds = np.zeros((self.capacity, self.n_agents))
-        self.memory_nobs = np.zeros((self.capacity, sum(self.obs_dims)))
         self.memory_dones = np.zeros((self.capacity, self.n_agents), dtype=bool)
 
     def store(self, obs, acts, rwds, nobs, dones):
         store_index = self.entries % self.capacity
 
-        self.memory_obs[store_index] = obs
+        for ii in range(self.n_agents):
+            self.memory_obs[ii][store_index] = obs[ii]
+            self.memory_nobs[ii][store_index] = nobs[ii]
         self.memory_acts[store_index] = acts
         self.memory_rwds[store_index] = rwds
-        self.memory_nobs[store_index] = nobs
         self.memory_dones[store_index] = dones
         
         self.entries += 1
@@ -42,10 +47,10 @@ class ReplayBuffer:
         )
 
         return {
-            "obs": self.memory_obs[idxs],
+            "obs": [self.memory_obs[ii][idxs] for ii in range(self.n_agents)],
             "acts": self.memory_acts[idxs],
             "rwds": self.memory_rwds[idxs],
-            "nobs": self.memory_nobs[idxs],
+            "nobs": [self.memory_nobs[ii][idxs] for ii in range(self.n_agents)],
             "dones": self.memory_dones[idxs],
         }
     

@@ -45,16 +45,16 @@ def train(config: argparse.Namespace, key):
             nobs, rwds, dones, _ = env.step(acts)
 
             buffer.store(
-                obs=np.concatenate(obs),
+                obs=obs,
                 acts=acts,
                 rwds=rwds,
-                nobs=np.concatenate(nobs),
+                nobs=nobs,
                 dones=dones,
             )
 
             obs = nobs
 
-            if buffer.ready() and (tt % 1000 == 0): # TODO: improve this
+            if buffer.ready() and (tt % 1000 == 0): # TODO: improve training interval setup
                 sample = buffer.sample()
 
                 for agent in agents:
