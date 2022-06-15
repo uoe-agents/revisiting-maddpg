@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import jax.random as jrand
 import jax.nn as jnn
 import jax.lax as jlax
+import equinox as eqx
 
 def gumbel_softmax(logits, key, temperature=1.0, st=True):
     # TODO: Explore how this could be written with a custom jax derivative expression (jax.custom_jvp)
@@ -30,6 +31,6 @@ def soft_update(target_model, behaviour_model, tau):
     return jax.tree_map(
         lambda old, new : _incremental_update(old, new, tau),
         target_model,
-        behaviour_model,
+        eqx.filter(behaviour_model, eqx.is_array),
         is_leaf=_is_none,
     )

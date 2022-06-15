@@ -46,6 +46,18 @@ class ReplayBuffer:
             replace=False,
         )
 
+        # return_array = []
+        # for ii in idxs:
+        #     return_array.append(
+        #         {
+        #             "obs": [self.memory_obs[agent][ii] for agent in range(self.n_agents)],
+        #             "acts": self.memory_acts[ii],
+        #             "rwds": self.memory_rwds[ii],
+        #             "nobs": [self.memory_nobs[agent][ii] for agent in range(self.n_agents)],
+        #             "dones": self.memory_dones[ii],
+        #         }
+        #     )
+        # return return_array
         return {
             "obs": [self.memory_obs[ii][idxs] for ii in range(self.n_agents)],
             "acts": self.memory_acts[idxs],
