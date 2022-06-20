@@ -12,6 +12,52 @@ from agent import Agent
 from maddpg import MADDPG
 jax.config.update('jax_platform_name', 'cpu')
 
+def play_episode(
+    env,
+    maddpg : MADDPG,
+    buffer,
+    max_timesteps,
+    steps_per_update,
+    train=True,
+    render=False,
+):
+    obs = env.reset()
+    dones = [False] * maddpg.n_agents
+
+    steps = 0
+    episode_return = 0
+
+    while not any(dones):
+        if (render): env.render()
+
+        acts = maddpg.acts(obs)
+        nobs, rwds, dones, _ = env.step(acts)
+
+        if train:
+            buffer.store(
+                obs=obs,
+                acts=acts,
+                rwds=rwds,
+                nobs=nobs,
+                dones=dones,
+            )
+
+            if buffer.ready() and (steps % steps_per_update == 0): # TODO: improve training interval setup
+                sample = buffer.sample()
+                maddpg.update(sample)
+
+        steps += 1
+
+        episode_return += sum(rwds)
+
+        if (steps > max_timesteps):
+            break
+
+        obs = nobs
+
+    return episode_return
+
+
 def train(config: argparse.Namespace, key):
     env = make_env(config.env)
     #n_agents = env.n_agents
@@ -32,32 +78,29 @@ def train(config: argparse.Namespace, key):
         key=key,
     )
 
-    for epi_i in tqdm(range(config.n_episodes)):
-        render_on = (epi_i % 10)
-        obs = env.reset()
-        cum_rwd = 0
-        for tt in range(config.episode_length):
-            if (config.render and render_on): env.render()
-            acts = maddpg.acts(obs)
-            nobs, rwds, dones, _ = env.step(acts)
+    # with tqdm(range(config.n_episodes)) as pbar:
+    for epi_i in range(config.n_episodes):
+        _ = play_episode(
+            env,
+            maddpg,
+            buffer,
+            max_timesteps=config.episode_length,
+            steps_per_update=config.steps_per_update,
+            train=True,
+            render=False,
+        )
 
-            buffer.store(
-                obs=obs,
-                acts=acts,
-                rwds=rwds,
-                nobs=nobs,
-                dones=dones,
+        if (config.eval_freq != 0 and epi_i % config.eval_freq == 0):
+            episode_return = play_episode(
+                env,
+                maddpg,
+                buffer,
+                max_timesteps=config.episode_length,
+                steps_per_update=None,
+                train=False,
+                render=config.render,
             )
-
-            cum_rwd += sum(rwds)
-            obs = nobs
-
-            if buffer.ready() and (tt % config.batch_size == 0): # TODO: improve training interval setup
-                sample = buffer.sample()
-                maddpg.update(sample)
-
-            if all(dones): break
-        print(f"Cumulative reward: {cum_rwd}")
+            print(f"Episode Return = {episode_return}")
 
     env.close()
 
@@ -65,14 +108,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", default="simple_adversary")
     parser.add_argument("--seed", default=1, type=int)
-    parser.add_argument("--n_episodes", default=50, type=int)
-    parser.add_argument("--episode_length", default=1000, type=int)
+    parser.add_argument("--n_episodes", default=25000, type=int)
+    parser.add_argument("--episode_length", default=50, type=int)
+    parser.add_argument("--steps_per_update", default=10, type=int)
     parser.add_argument("--batch_size", default=64, type=int)
-    parser.add_argument("--render", default=False, type=bool)
+    parser.add_argument("--render", default=True, type=bool)
     parser.add_argument("--hidden_dim_width", default=64, type=int)
     parser.add_argument("--critic_lr", default=1e-3, type=float)
     parser.add_argument("--actor_lr", default=1e-4, type=float)
     parser.add_argument("--gamma", default=0.99, type=float)
+    parser.add_argument("--eval_freq", default=0, type=int)
 
     config = parser.parse_args()
     

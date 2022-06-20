@@ -5,7 +5,7 @@ import jax.nn as jnn
 import jax.lax as jlax
 import equinox as eqx
 
-def gumbel_softmax(logits, key, temperature=1.0, st=True):
+def gumbel_softmax(logits, key, temperature, st=True):
     # TODO: Explore how this could be written with a custom jax derivative expression (jax.custom_jvp)
 
     gumbels = jrand.gumbel(key, logits.shape)

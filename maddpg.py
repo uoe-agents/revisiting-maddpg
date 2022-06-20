@@ -1,11 +1,11 @@
 from copy import deepcopy
+from email import policy
 from agent import Agent
 from typing import List
 from jax import vmap, jit
 import jax.random as jrand
 import jax.numpy as jnp
 import jax.nn as jnn
-import equinox as eqx
 import einops
 import utils
 
@@ -51,6 +51,7 @@ class MADDPG:
             for ii in range(self.n_agents)
         ]
 
+        # TODO: Better nomenclature
         critic_in_A = jnp.concatenate((
             all_nobs,
             einops.rearrange(target_actions, 'agent batch action -> batch (agent action)')
@@ -77,8 +78,10 @@ class MADDPG:
                 sample['rwds'][:,ii],
                 self.gamma,
             )
+            print(f"Critic Loss = {critic_loss}\t; Policy Loss = {policy_loss}")
 
-            #print(f"Critic Loss = {critic_loss} \t Policy Loss = {policy_loss}")
+        # TODO: Check -> Does this need to be done @ end of individual agent updates??
+        # for agent in self.agents:
+        #     agent.soft_update()
 
         return None
-
