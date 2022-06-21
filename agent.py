@@ -31,15 +31,15 @@ class Agent:
         self.n_obs = observation_space[self.agent_idx].shape[0]
         self.n_acts = action_space[self.agent_idx].n
         # -----------
-        self.key, *subkeys = jrand.split(agent_key, num=3)
+        self.key, *subkeys = jrand.split(agent_key, num=4)
 
         # ***** POLICY *****
         policy_in_size = self.n_obs
         policy_out_size = self.n_acts
 
-        self.policy = _hk_tt( lambda xx: ActorNetwork(self.n_acts)(xx) )
+        self.policy = _hk_tt( lambda xx: ActorNetwork(self.n_acts, subkeys[0])(xx) )
         self.behaviour_policy_params = self.target_policy_params = \
-            self.policy.init(subkeys[0], jnp.ones((policy_in_size,)))
+            self.policy.init(subkeys[1], jnp.ones((policy_in_size,)))
         # ***** ****** *****
 
         # ***** CRITIC *****
@@ -52,7 +52,7 @@ class Agent:
         self.critic = _hk_tt (lambda obs, acts : CriticNetwork()(obs, acts))
         self.behaviour_critic_params = self.target_critic_params = \
             self.critic.init(
-                subkeys[1],
+                subkeys[2],
                 jnp.ones((all_obs_size,)),
                 jnp.ones((len(observation_space),act_size))
             )
@@ -65,23 +65,15 @@ class Agent:
         self.critic_optim = optax.adam(critic_lr)
         self.critic_optim_state = self.critic_optim.init(self.behaviour_critic_params)
 
-    def _act(self, obs, network_fn): # TODO: Temperature must be a param
-        """
-            Returns one-hot
-        """
-        self.key, act_key = jrand.split(self.key)
-        actions_one_hot = utils.gumbel_softmax(network_fn(obs), act_key, temperature=0.75, st=True)
-        return actions_one_hot
-
     def act_behaviour(self, obs):
-        return self._act(obs, lambda xx: self.policy.apply(self.behaviour_policy_params, xx))
+        return self.policy.apply(self.behaviour_policy_params, obs)
     
     def act_target(self, obs):
-        return self._act(obs, lambda xx: self.policy.apply(self.target_policy_params, xx))
+        return self.policy.apply(self.target_policy_params, obs)
 
     #@partial(jit, static_argnums=(0,))
     def update_critic(self, all_obs, all_nobs, target_actions, sampled_actions, rewards, gamma):
-        
+
         @value_and_grad
         def _critic_loss_fn(
             behaviour_critic_params,
@@ -94,10 +86,10 @@ class Agent:
             rewards,
             gamma,
         ):
-            Q_vals = vmap(critic_network.apply, in_axes=(None,0,0))(target_critic_params, all_nobs, target_actions)
+            Q_vals = jit(vmap(critic_network.apply, in_axes=(None,0,0)))(target_critic_params, all_nobs, target_actions)
             target_ys = rewards + gamma * Q_vals
-            behaviour_ys = vmap(critic_network.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
-            return jnp.mean((target_ys - behaviour_ys)**2)
+            behaviour_ys = jit(vmap(critic_network.apply, in_axes=(None,0,0)))(behaviour_critic_params, all_obs, sampled_actions)
+            return jit(jnp.mean)((target_ys - behaviour_ys)**2)
         
         critic_loss, critic_grads = _critic_loss_fn(
             self.behaviour_critic_params,
@@ -129,10 +121,12 @@ class Agent:
             agent_obs,
             sampled_actions,
         ):
-            actions = deepcopy(sampled_actions)
-            actions[:,self.agent_idx,:] = vmap(policy_network.apply, in_axes=(None,0))(behaviour_policy_params, agent_obs)
+            actions = jax.device_put(deepcopy(sampled_actions))
+            actions.at[:,self.agent_idx,:].set(
+                jit(vmap(policy_network.apply, in_axes=(None,0)))(behaviour_policy_params, agent_obs)
+            )
 
-            Q_vals = vmap(critic_network.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, actions)
+            Q_vals = jit(vmap(critic_network.apply, in_axes=(None,0,0)))(behaviour_critic_params, all_obs, actions)
             return -jnp.mean(Q_vals)
     
         actor_loss, actor_grads = _actor_loss_fn(
@@ -149,114 +143,16 @@ class Agent:
         self.behaviour_policy_params = optax.apply_updates(self.behaviour_policy_params, actor_updates)
 
         return actor_loss
-        
-    # @partial(jit, static_argnums=(0,))
-    # def update_critic(self, critic_in_A, critic_in_B, rewards, gamma):
-        
-    #     @value_and_grad
-    #     def _critic_loss_fn(
-    #         behaviour_critic_params,
-    #         target_critic_params,
-    #         critic_network,
-    #         critic_in_A,
-    #         critic_in_B,
-    #         rewards,
-    #         gamma,
-    #     ):
-    #         Qs_critic = vmap(critic_network.apply, in_axes=(None,0))(target_critic_params, critic_in_A)
-    #         target_ys = rewards + gamma * Qs_critic
-    #         behaviour_ys = vmap(critic_network.apply, in_axes=(None,0))(behaviour_critic_params, critic_in_B)
-    #         return jnp.mean((target_ys - behaviour_ys)**2)
-        
-    #     critic_loss, critic_grads = _critic_loss_fn(
-    #         self.behaviour_critic_params,
-    #         self.target_critic_params,
-    #         self.critic,
-    #         critic_in_A,
-    #         critic_in_B,
-    #         rewards,
-    #         gamma
-    #     )
-        
-    #     critic_updates, self.critic_optim_state = self.critic_optim.update(critic_grads, self.critic_optim_state)
-    #     self.behaviour_critic_params = optax.apply_updates(self.behaviour_critic_params, critic_updates)
 
-    #     return critic_loss
-
-    #@partial(jit, static_argnums=(0,)) # Don't apply jit to self object
-    # def update_actor(self, all_obs, all_acts: List):
-        
-    #     def _actor_loss():
-    #         ...
-    
-    #     def _actor_step():
-    #         ...
-
-    # def update(self,
-    #     critic_in_A,
-    #     critic_in_B,
-    #     critic_in_C,
-    #     rewards,
-    #     gamma,
-    # ):
-    #     # TODO: Better nomenclature
-    #     # ------- CRITIC UPDATE -------
-    #     @value_and_grad
-    #     def _critic_loss(
-    #         behaviour_critic_params,
-    #         behaviour_critic,
-    #         target_critic_params,
-    #         target_critic,
-    #         critic_in_A,
-    #         critic_in_B,
-    #         rewards,
-    #         gamma,
-    #     ):
-    #         Qs_critic = vmap(target_critic.apply, in_axes=(None,0))(target_critic_params, critic_in_A)
-    #         target_ys = rewards + gamma * Qs_critic
-    #         behaviour_ys = vmap(behaviour_critic.apply, in_axes=(None,0))(behaviour_critic_params, critic_in_B)
-    #         return jnp.mean((target_ys - behaviour_ys)**2)
-
-    #     critic_loss, critic_grads = _critic_loss(
-    #         self.behaviour_critic_params,
-    #         self.behaviour_critic,
-    #         self.target_critic_params,
-    #         self.target_critic,
-    #         critic_in_A,
-    #         critic_in_B,
-    #         rewards,
-    #         gamma
-    #     )
-    #     critic_updates, self.critic_optim_state = self.critic_optim.update(critic_grads, self.critic_optim_state)
-    #     self.behaviour_critic_params = optax.apply_updates(self.behaviour_critic_params, critic_updates)
-    #     # ------- ------ ------ -------
-
-    #     # ------- ACTOR UPDATE -------
-    #     @value_and_grad
-    #     def _actor_loss(
-    #         behaviour_policy_params,
-    #         behaviour_policy,
-    #         behaviour_critic_params,
-    #         behaviour_critic,
-    #         critic_in_C
-    #     ):
-    #         Qs_actor = vmap(behaviour_critic.apply, in_axes=(None,0))(behaviour_critic_params, critic_in_C)
-    #         return -jnp.mean(Qs_actor)
-    
-    #     policy_loss, policy_grads = _actor_loss(
-    #         self.behaviour_policy_params,
-    #         self.behaviour_policy,
-    #         self.behaviour_critic_params,
-    #         self.behaviour_critic,
-    #         critic_in_C,
-    #     )
-    #     policy_updates, self.policy_optim_state = self.policy_optim.update(policy_grads, self.policy_optim_state)
-    #     self.behaviour_policy_params = optax.apply_updates(self.behaviour_policy_params, policy_updates)
-
-    #     # ------- ----- ------ -------
-    #     return critic_loss.item(), policy_loss.item()
-
-    # def soft_update(self): # TODO: Tau here or as a class member?
-    #     # Soft updates to targets
-    #     self.target_critic = utils.soft_update(self.target_critic, self.behaviour_critic, self.tau)
-    #     self.target_policy = utils.soft_update(self.target_policy, self.behaviour_policy, self.tau)
+    def soft_update(self): # TODO: Tau here or as a class member?
+        # Soft updates to targets
+        self.target_policy_params = optax.incremental_update(
+            self.behaviour_policy_params,
+            self.target_policy_params,
+            step_size=self.tau,
+        )
+        self.target_critic_params = optax.incremental_update(
+            self.behaviour_critic_params,
+            self.target_critic_params,
+            step_size=self.tau,
+        )
