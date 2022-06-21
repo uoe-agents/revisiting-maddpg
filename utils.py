@@ -4,6 +4,7 @@ import jax.random as jrand
 import jax.nn as jnn
 import jax.lax as jlax
 import equinox as eqx
+import haiku as hk
 
 def gumbel_softmax(logits, key, temperature, st=True):
     # TODO: Explore how this could be written with a custom jax derivative expression (jax.custom_jvp)
@@ -34,3 +35,6 @@ def soft_update(target_model, behaviour_model, tau):
         eqx.filter(behaviour_model, eqx.is_array),
         is_leaf=_is_none,
     )
+
+def _hk_tt(xx):
+    return hk.without_apply_rng(hk.transform(xx))

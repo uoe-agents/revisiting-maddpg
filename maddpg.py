@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import jax.nn as jnn
 import einops
 import utils
+from networks import ActorNetwork, CriticNetwork
 
 class MADDPG:
     def __init__(self, env, critic_lr, actor_lr, hidden_dim_width, gamma, key):
@@ -34,51 +35,38 @@ class MADDPG:
     def update(self, sample):
         # TODO: I really don't like all these concatenate operations :(
         
+        # Necessary to do concat, because of the jagged arrays. Probably less efficient, but at least it maintains generality
         all_obs = jnp.concatenate(sample['obs'], axis=1)
         all_nobs = jnp.concatenate(sample['nobs'], axis=1)
         
-        target_actions = [
+        target_actions = einops.rearrange([
             vmap(agent.act_target)(obs) for agent, obs in zip(self.agents, sample['obs']) # OBS OR NOBS???? hmmm
-        ] # TODO: this seems to return same one-hot for all samples in batch
-        #einops.rearrange(, 'agent batch action -> batch (agent action)') 
+        ], 'agent batch action -> batch agent action')
+        # TODO: this seems to return same one-hot for all samples in batch
 
-        behaviour_actions = [
-            vmap(agent.act_behaviour)(obs) for agent, obs in zip(self.agents, sample['obs'])
-        ]
-
-        sampled_actions = [
+        sampled_actions = einops.rearrange([
             jnn.one_hot(sample['acts'][:,ii], num_classes=self.agents[ii].n_acts)
             for ii in range(self.n_agents)
-        ]
+        ], 'agent batch action -> batch agent action')
 
-        # TODO: Better nomenclature
-        critic_in_A = jnp.concatenate((
-            all_nobs,
-            einops.rearrange(target_actions, 'agent batch action -> batch (agent action)')
-        ), axis=1)
-
-        critic_in_B = jnp.concatenate((
-            all_obs,
-            einops.rearrange(sampled_actions, 'agent batch action -> batch (agent action)')
-        ), axis=1)
-
-        losses = []
+        critic_loss = 0; actor_loss = 0
         for ii, agent in enumerate(self.agents):
-            sampled_actions_i = deepcopy(sampled_actions)
-            sampled_actions_i[ii] = behaviour_actions[ii]
-            critic_in_C_i = jnp.concatenate((
-                all_obs,
-                einops.rearrange(sampled_actions_i, 'agent batch action -> batch (agent action)')
-            ), axis=1)
+            critic_loss += agent.update_critic(
+                all_obs=all_obs,
+                all_nobs=all_nobs,
+                target_actions=target_actions,
+                sampled_actions=sampled_actions,
+                rewards=sample['rwds'][:,ii],
+                gamma=self.gamma,
+            ).item()
 
-            critic_loss, policy_loss = agent.update(
-                critic_in_A,
-                critic_in_B,
-                critic_in_C_i,
-                sample['rwds'][:,ii],
-                self.gamma,
-            )
-            print(f"Critic Loss = {critic_loss}\t; Policy Loss = {policy_loss}")
+            actor_loss += agent.update_actor(
+                all_obs=all_obs,
+                agent_obs=sample['obs'][ii],
+                sampled_actions=sampled_actions,
+            ).item()
+        
+        print(f"Critic Loss = {critic_loss}; Actor Loss = {actor_loss}")
 
         # TODO: Check -> Does this need to be done @ end of individual agent updates??
         # for agent in self.agents:
