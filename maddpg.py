@@ -66,10 +66,10 @@ class MADDPG:
                 sampled_actions=sampled_actions,
             ).item()
         
-        print(f"Critic Loss = {critic_loss}; Actor Loss = {actor_loss}")
+        #print(f"Critic Loss = {critic_loss}; Actor Loss = {actor_loss}")
 
         # TODO: Check -> Does this need to be done @ end of individual agent updates??
-        # for agent in self.agents:
-        #     agent.soft_update()
+        for agent in self.agents:
+            agent.soft_update()
 
         return None
