@@ -12,11 +12,9 @@ import haiku as hk
 import optax
 import einops
 from functools import partial
-from networks import ActorNetwork, CriticNetwork, CriticNetworkAlt
+from networks import ActorNetwork, CriticNetwork
 
 class Agent:
-    # def __init__(self, actor_dim, critic_dim, n_agents, n_actions, agent_idx, key,
-        # fc_dims=[64,64], gamma=0.95, alpha_actor=0.01, alpha_critic=0.01, tau=0.01):
     def __init__(self,
         agent_idx,
         observation_space,
@@ -50,11 +48,8 @@ class Agent:
             sum([act.n for act in action_space])
         all_obs_size = sum([obs.shape[0] for obs in observation_space])
         act_size = action_space[0].n # TODO: For now, assuming that all agents have same size space --> I think this will be okay, with padding etc.
-        # self.critic = _hk_tt( lambda xx : CriticNetwork()(xx) )
-        # self.behaviour_critic_params = self.target_critic_params = \
-        #     self.critic.init(subkeys[1], jnp.ones((critic_in_size,)))
 
-        self.critic = _hk_tt (lambda obs, acts : CriticNetworkAlt()(obs, acts))
+        self.critic = _hk_tt (lambda obs, acts : CriticNetwork()(obs, acts))
         self.behaviour_critic_params = self.target_critic_params = \
             self.critic.init(
                 subkeys[1],

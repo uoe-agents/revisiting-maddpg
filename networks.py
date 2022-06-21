@@ -3,6 +3,9 @@ import haiku as hk
 import jax.nn as jnn
 import jax.numpy as jnp
 
+# TODO: PASS HIDDEN DIMS & DEPTH AS A PARAM
+# TODO: Typing
+
 class ActorNetwork(hk.Module):
     def __init__(self, n_actions):
         super(ActorNetwork, self).__init__()
@@ -20,22 +23,9 @@ class CriticNetwork(hk.Module):
     def __init__(self):
         super(CriticNetwork, self).__init__()
 
-    def __call__(self, obs) -> jnp.DeviceArray:
-        net = hk.Sequential(layers=[
-            hk.Flatten(),
-            hk.Linear(100), # TODO: w_init = ?
-            jnn.relu,
-            hk.Linear(1),
-        ])
-        return net(obs)
-
-class CriticNetworkAlt(hk.Module):
-    def __init__(self):
-        super(CriticNetworkAlt, self).__init__()
-
     def __call__(self, all_obs, acts_per_agent: List) -> jnp.DeviceArray:
         net = hk.Sequential(layers=[
-            hk.Linear(100), # TODO: w_init = ?
+            hk.Linear(100), # TODO: w_init = ? 
             jnn.relu,
             hk.Linear(1),
         ])
