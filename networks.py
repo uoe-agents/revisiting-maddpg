@@ -15,7 +15,9 @@ class ActorNetwork(hk.Module):
 
     def __call__(self, obs: jnp.ndarray) -> jnp.DeviceArray:
         net = hk.Sequential(layers=[
-            hk.Linear(100), # TODO: w_init = ?
+            hk.Linear(64), # TODO: w_init = ?
+            jnn.relu,
+            hk.Linear(64),
             jnn.relu,
             hk.Linear(self.n_actions),
             jnn.log_softmax,
@@ -29,7 +31,9 @@ class CriticNetwork(hk.Module):
 
     def __call__(self, all_obs, acts_per_agent: List) -> jnp.DeviceArray:
         net = hk.Sequential(layers=[
-            hk.Linear(100), # TODO: w_init = ? 
+            hk.Linear(64), # TODO: w_init = ? 
+            jnn.relu,
+            hk.Linear(64),
             jnn.relu,
             hk.Linear(1),
         ])
