@@ -3,7 +3,6 @@ import jax.numpy as jnp
 import jax.random as jrand
 import jax.nn as jnn
 import jax.lax as jlax
-import equinox as eqx
 import haiku as hk
 from typing import Optional
 
@@ -50,23 +49,6 @@ class GumbelSoftmax(hk.Module):
             return y_hard - jlax.stop_gradient(y_soft) + y_soft
         else:
             return y_soft
-
-def _incremental_update(old, new, tau):
-    if new is None:
-        return old
-    else:
-        return (1 - tau) * old + tau * new
-
-def _is_none(x):
-    return x is None
-
-def soft_update(target_model, behaviour_model, tau):
-    return jax.tree_map(
-        lambda old, new : _incremental_update(old, new, tau),
-        target_model,
-        eqx.filter(behaviour_model, eqx.is_array),
-        is_leaf=_is_none,
-    )
 
 def _hk_tt(xx):
     return hk.without_apply_rng(hk.transform(xx))
