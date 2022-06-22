@@ -23,7 +23,7 @@ class Agent:
         critic_lr,
         actor_lr,
         agent_key,
-        tau=0.005,
+        tau=0.01,
         # more TODO
     ):
         self.agent_idx = agent_idx
@@ -65,9 +65,11 @@ class Agent:
         self.critic_optim = optax.adam(critic_lr)
         self.critic_optim_state = self.critic_optim.init(self.behaviour_critic_params)
 
+    @partial(jit, static_argnums=(0,))
     def act_behaviour(self, obs):
         return self.policy.apply(self.behaviour_policy_params, obs)
-    
+
+    @partial(jit, static_argnums=(0,))
     def act_target(self, obs):
         return self.policy.apply(self.target_policy_params, obs)
 
@@ -86,10 +88,10 @@ class Agent:
             rewards,
             gamma,
         ):
-            Q_vals = jit(vmap(critic_network.apply, in_axes=(None,0,0)))(target_critic_params, all_nobs, target_actions)
+            Q_vals = vmap(critic_network.apply, in_axes=(None,0,0))(target_critic_params, all_nobs, target_actions)
             target_ys = rewards + gamma * Q_vals
-            behaviour_ys = jit(vmap(critic_network.apply, in_axes=(None,0,0)))(behaviour_critic_params, all_obs, sampled_actions)
-            return jit(jnp.mean)((target_ys - behaviour_ys)**2)
+            behaviour_ys = vmap(critic_network.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
+            return jnp.mean((target_ys - behaviour_ys)**2)
         
         critic_loss, critic_grads = _critic_loss_fn(
             self.behaviour_critic_params,
@@ -121,12 +123,10 @@ class Agent:
             agent_obs,
             sampled_actions,
         ):
-            actions = jax.device_put(deepcopy(sampled_actions))
-            actions.at[:,self.agent_idx,:].set(
-                jit(vmap(policy_network.apply, in_axes=(None,0)))(behaviour_policy_params, agent_obs)
+            Q_vals = vmap(critic_network.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs,
+                sampled_actions.at[:,self.agent_idx,:].set(
+                    vmap(policy_network.apply, in_axes=(None,0))(behaviour_policy_params, agent_obs))
             )
-
-            Q_vals = jit(vmap(critic_network.apply, in_axes=(None,0,0)))(behaviour_critic_params, all_obs, actions)
             return -jnp.mean(Q_vals)
     
         actor_loss, actor_grads = _actor_loss_fn(
