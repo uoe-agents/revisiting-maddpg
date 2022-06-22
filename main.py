@@ -15,7 +15,7 @@ jax.config.update('jax_platform_name', 'cpu')
 def play_episode(
     env,
     maddpg : MADDPG,
-    buffer,
+    buffer : ReplayBuffer,
     max_timesteps,
     steps_per_update,
     train=True,
@@ -79,7 +79,7 @@ def train(config: argparse.Namespace, key):
     )
 
     # with tqdm(range(config.n_episodes)) as pbar:
-    for epi_i in range(config.n_episodes):
+    for epi_i in tqdm(range(config.n_episodes)):
         _ = play_episode(
             env,
             maddpg,
@@ -106,18 +106,18 @@ def train(config: argparse.Namespace, key):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", default="simple_adversary")
+    parser.add_argument("--env", default="simple_spread")
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--n_episodes", default=25000, type=int)
     parser.add_argument("--episode_length", default=50, type=int)
-    parser.add_argument("--steps_per_update", default=10, type=int)
-    parser.add_argument("--batch_size", default=64, type=int)
-    parser.add_argument("--render", default=True, type=bool)
+    parser.add_argument("--steps_per_update", default=100, type=int)
+    parser.add_argument("--batch_size", default=1024, type=int)
+    parser.add_argument("--render", default=False, type=bool)
     parser.add_argument("--hidden_dim_width", default=64, type=int)
-    parser.add_argument("--critic_lr", default=1e-3, type=float)
+    parser.add_argument("--critic_lr", default=1e-4, type=float)
     parser.add_argument("--actor_lr", default=1e-4, type=float)
-    parser.add_argument("--gamma", default=0.99, type=float)
-    parser.add_argument("--eval_freq", default=0, type=int)
+    parser.add_argument("--gamma", default=0.95, type=float)
+    parser.add_argument("--eval_freq", default=100, type=int)
 
     config = parser.parse_args()
     
