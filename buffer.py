@@ -41,9 +41,9 @@ class ReplayBuffer:
 
         self.key, sample_key = jrand.split(self.key)
         idxs = jrand.choice(sample_key,
-            jnp.min(jnp.array((self.entries, self.capacity))),
+            np.min((self.entries, self.capacity)),
             shape=(self.batch_size,),
-            replace=False,
+            replace=True,
         )
 
         # return_array = []
