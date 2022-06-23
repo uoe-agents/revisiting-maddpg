@@ -106,7 +106,7 @@ def train(config: argparse.Namespace, key):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", default="simple_spread")
+    parser.add_argument("--env", default="simple_adversary")
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--n_episodes", default=25000, type=int)
     parser.add_argument("--episode_length", default=50, type=int)

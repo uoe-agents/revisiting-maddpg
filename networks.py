@@ -8,8 +8,9 @@ import utils
 # TODO: Typing
 
 class ActorNetwork(hk.Module):
-    def __init__(self, n_actions, key):
+    def __init__(self, obs_dim, n_actions, key):
         super(ActorNetwork, self).__init__()
+        self.obs_dim = obs_dim
         self.n_actions = n_actions
         self.key = key
 
@@ -23,11 +24,15 @@ class ActorNetwork(hk.Module):
             jnn.log_softmax,
             utils.GumbelSoftmax(temperature=0.75, key=self.key)
         ])
-        return net(obs) #  TODO: Gumbel-softmax etc
+        return net(obs[:self.obs_dim]) #  TODO: Gumbel-softmax etc
 
 class CriticNetwork(hk.Module):
-    def __init__(self):
+    def __init__(self, obs_dims):
         super(CriticNetwork, self).__init__()
+        max_obs_dim = jnp.max(obs_dims)
+        self.obs_mask = jnp.concatenate([
+            jnp.arange(ii*max_obs_dim , ii*max_obs_dim + obs_dims[ii]) for ii in range(len(obs_dims))
+        ])
 
     def __call__(self, all_obs, acts_per_agent: List) -> jnp.DeviceArray:
         net = hk.Sequential(layers=[
@@ -37,5 +42,5 @@ class CriticNetwork(hk.Module):
             jnn.relu,
             hk.Linear(1),
         ])
-        critic_input = jnp.concatenate((all_obs, *acts_per_agent))
+        critic_input = jnp.concatenate((all_obs[self.obs_mask], *acts_per_agent))
         return net(critic_input)
