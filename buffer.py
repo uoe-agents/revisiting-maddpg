@@ -1,6 +1,7 @@
 import numpy as np
 import jax.numpy as jnp
 import jax.random as jrand
+from collections import Counter
 
 class ReplayBuffer:
     def __init__(self, capacity: int | float, obs_dims, batch_size: int, key): # Todo fix types
@@ -14,12 +15,6 @@ class ReplayBuffer:
         self.obs_dims = obs_dims
         self.max_obs_dim = np.max(obs_dims)
         self.n_agents = len(obs_dims)
-
-        # self.memory_obs = {}
-        # self.memory_nobs = {}
-        # for ii in range(self.n_agents):
-        #     self.memory_obs[ii] = np.zeros((self.capacity, obs_dims[ii]))
-        #     self.memory_nobs[ii] = np.zeros((self.capacity, obs_dims[ii]))
 
         self.memory_obs = np.zeros((self.capacity, self.n_agents, self.max_obs_dim))
         self.memory_nobs = np.zeros((self.capacity, self.n_agents, self.max_obs_dim))
