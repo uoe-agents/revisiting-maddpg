@@ -20,6 +20,3 @@ def gumbel_softmax_st(logits: Array, key, tau: float = 1) -> Array:
 
     y_hard = jnn.one_hot(jnp.argmax(y_soft), num_classes=logits.shape[-1])
     return y_hard - jlax.stop_gradient(y_soft) + y_soft
-
-def _hk_tt(xx):
-    return hk.without_apply_rng(hk.transform(xx))

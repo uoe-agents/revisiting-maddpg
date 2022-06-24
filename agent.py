@@ -6,8 +6,6 @@ from jax import value_and_grad, vmap, jit, grad
 import jax.random as jrand
 import jax.numpy as jnp
 import jax.nn as jnn
-import utils
-from utils import _hk_tt
 import haiku as hk
 import optax
 import einops
@@ -22,7 +20,7 @@ class Agent:
         hidden_dim_width,
         critic_lr,
         actor_lr,
-        agent_key,
+        rng,
         tau=0.01,
         # more TODO
     ):
@@ -34,15 +32,15 @@ class Agent:
         self.obs_dims = jnp.array([obs.shape[0] for obs in observation_space])
         self.n_acts = action_space[self.agent_idx].n
         # -----------
-        self.key, *subkeys = jrand.split(agent_key, num=4)
+        self.rng = rng
 
         # ***** POLICY *****
         policy_in_size = self.max_obs_size #self.n_obs
         policy_out_size = self.n_acts
 
-        self.policy = _hk_tt( lambda xx: ActorNetwork(self.n_obs, self.n_acts, subkeys[0])(xx) )
+        self.policy = hk.transform( lambda xx: ActorNetwork(self.n_obs, self.n_acts)(xx) )
         self.behaviour_policy_params = self.target_policy_params = \
-            self.policy.init(subkeys[1], jnp.ones((policy_in_size,)))
+            self.policy.init(next(self.rng), jnp.ones((policy_in_size,)))
         # ***** ****** *****
 
         # ***** CRITIC *****
@@ -53,10 +51,10 @@ class Agent:
         #all_obs_size = self.max_obs_size * len(observation_space)
         act_size = action_space[0].n # TODO: For now, assuming that all agents have same size space --> I think this will be okay, with padding etc.
 
-        self.critic = _hk_tt (lambda obs, acts : CriticNetwork(self.obs_dims)(obs, acts))
+        self.critic = hk.transform( lambda obs, acts : CriticNetwork(self.obs_dims)(obs, acts) )
         self.behaviour_critic_params = self.target_critic_params = \
             self.critic.init(
-                subkeys[2],
+                next(self.rng),
                 jnp.ones((all_obs_size,)),
                 jnp.ones((len(observation_space),act_size))
             )
@@ -70,12 +68,12 @@ class Agent:
         self.critic_optim_state = self.critic_optim.init(self.behaviour_critic_params)
 
     @partial(jit, static_argnums=(0,))
-    def act_behaviour(self, obs):
-        return self.policy.apply(self.behaviour_policy_params, obs)
+    def act_behaviour(self, obs, key):
+        return self.policy.apply(self.behaviour_policy_params, key, obs)
 
     @partial(jit, static_argnums=(0,))
-    def act_target(self, obs):
-        return self.policy.apply(self.target_policy_params, obs)
+    def act_target(self, obs, key):
+        return self.policy.apply(self.target_policy_params, key, obs)
 
     #@partial(jit, static_argnums=(0,))
     def update_critic(self, all_obs, all_nobs, target_actions, sampled_actions, rewards, gamma):
@@ -92,9 +90,9 @@ class Agent:
             rewards,
             gamma,
         ):
-            Q_vals = vmap(critic_network.apply, in_axes=(None,0,0))(target_critic_params, all_nobs, target_actions)
+            Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(target_critic_params, next(self.rng), all_nobs, target_actions)
             target_ys = rewards + gamma * Q_vals
-            behaviour_ys = vmap(critic_network.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
+            behaviour_ys = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs, sampled_actions)
             return jnp.mean((target_ys - behaviour_ys)**2)
         
         critic_loss, critic_grads = _critic_loss_fn(
@@ -127,9 +125,9 @@ class Agent:
             agent_obs,
             sampled_actions,
         ):
-            Q_vals = vmap(critic_network.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs,
+            Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs,
                 sampled_actions.at[:,self.agent_idx,:].set(
-                    vmap(policy_network.apply, in_axes=(None,0))(behaviour_policy_params, agent_obs))
+                    vmap(policy_network.apply, in_axes=(None,None,0))(behaviour_policy_params, next(self.rng), agent_obs))
             )
             return -jnp.mean(Q_vals)
     

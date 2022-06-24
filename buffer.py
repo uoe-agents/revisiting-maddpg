@@ -4,8 +4,8 @@ import jax.random as jrand
 from collections import Counter
 
 class ReplayBuffer:
-    def __init__(self, capacity: int | float, obs_dims, batch_size: int, key): # Todo fix types
-        self.key = key
+    def __init__(self, capacity: int | float, obs_dims, batch_size: int, rng): # Todo fix types
+        self.rng = rng
 
         self.capacity = int(capacity)
         self.entries = 0
@@ -38,8 +38,8 @@ class ReplayBuffer:
     def sample(self):
         if not self.ready(): return None
 
-        self.key, sample_key = jrand.split(self.key)
-        idxs = jrand.choice(sample_key,
+        #self.key, sample_key = jrand.split(self.key)
+        idxs = jrand.choice(next(self.rng),
             np.min((self.entries, self.capacity)),
             shape=(self.batch_size,),
             replace=True,
