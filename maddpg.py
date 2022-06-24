@@ -33,16 +33,13 @@ class MADDPG:
         return [jnp.argmax(self.agents[ii].act_behaviour(obs[ii])) for ii in range(self.n_agents)]
 
     def update(self, sample):
-        # TODO: I really don't like all these concatenate operations :(
-        
-        # Necessary to do concat, because of the jagged arrays. Probably less efficient, but at least it maintains generality
-        all_obs = jnp.concatenate(sample['obs'], axis=1)
-        all_nobs = jnp.concatenate(sample['nobs'], axis=1)
+        all_obs = einops.rearrange(sample['obs'], 'batch agent obs -> batch (agent obs)')
+        all_nobs = einops.rearrange(sample['nobs'], 'batch agent nobs -> batch (agent nobs)')
         
         target_actions = einops.rearrange([
-            vmap(agent.act_target)(obs) for agent, obs in zip(self.agents, sample['obs']) # OBS OR NOBS???? hmmm
+            vmap(self.agents[ii].act_target)(sample['obs'][:,ii,:]) for ii in range(self.n_agents)
         ], 'agent batch action -> batch agent action')
-        # TODO: this seems to return same one-hot for all samples in batch
+        # TODO: this seems to return same one-hot for all samples in batch ??
 
         sampled_actions = einops.rearrange([
             jnn.one_hot(sample['acts'][:,ii], num_classes=self.agents[ii].n_acts)
@@ -62,7 +59,7 @@ class MADDPG:
 
             actor_loss += agent.update_actor(
                 all_obs=all_obs,
-                agent_obs=sample['obs'][ii],
+                agent_obs=sample['obs'][:,ii,:],
                 sampled_actions=sampled_actions,
             ).item()
         

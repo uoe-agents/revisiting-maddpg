@@ -28,16 +28,19 @@ class Agent:
     ):
         self.agent_idx = agent_idx
         self.tau = tau # TODO: Not sure yet if this should be class member or fn param
+        # TODO: Just do these calcs once in the beginning, and then pass the obs_dims array to actor
         self.n_obs = observation_space[self.agent_idx].shape[0]
+        self.max_obs_size = max([obs.shape[0] for obs in observation_space])
+        self.obs_dims = jnp.array([obs.shape[0] for obs in observation_space])
         self.n_acts = action_space[self.agent_idx].n
         # -----------
         self.key, *subkeys = jrand.split(agent_key, num=4)
 
         # ***** POLICY *****
-        policy_in_size = self.n_obs
+        policy_in_size = self.max_obs_size #self.n_obs
         policy_out_size = self.n_acts
 
-        self.policy = _hk_tt( lambda xx: ActorNetwork(self.n_acts, subkeys[0])(xx) )
+        self.policy = _hk_tt( lambda xx: ActorNetwork(self.n_obs, self.n_acts, subkeys[0])(xx) )
         self.behaviour_policy_params = self.target_policy_params = \
             self.policy.init(subkeys[1], jnp.ones((policy_in_size,)))
         # ***** ****** *****
@@ -47,9 +50,10 @@ class Agent:
             sum([obs.shape[0] for obs in observation_space]) + \
             sum([act.n for act in action_space])
         all_obs_size = sum([obs.shape[0] for obs in observation_space])
+        #all_obs_size = self.max_obs_size * len(observation_space)
         act_size = action_space[0].n # TODO: For now, assuming that all agents have same size space --> I think this will be okay, with padding etc.
 
-        self.critic = _hk_tt (lambda obs, acts : CriticNetwork()(obs, acts))
+        self.critic = _hk_tt (lambda obs, acts : CriticNetwork(self.obs_dims)(obs, acts))
         self.behaviour_critic_params = self.target_critic_params = \
             self.critic.init(
                 subkeys[2],
