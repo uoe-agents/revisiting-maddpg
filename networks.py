@@ -1,5 +1,6 @@
 from typing import List
 import haiku as hk
+import jax.random as jrand
 import jax.nn as jnn
 import jax.numpy as jnp
 import utils
@@ -21,10 +22,14 @@ class ActorNetwork(hk.Module):
             hk.Linear(64),
             jnn.relu,
             hk.Linear(self.n_actions),
-            jnn.log_softmax,
-            utils.GumbelSoftmax(temperature=0.75, key=self.key)
         ])
-        return net(obs[:self.obs_dim]) #  TODO: Gumbel-softmax etc
+        logits = net(obs[:self.obs_dim])
+        self.key, subkey = jrand.split(self.key)
+        return  utils.gumbel_softmax_st(
+            logits,
+            key = subkey,
+            tau = 0.75,
+        )
 
 class CriticNetwork(hk.Module):
     def __init__(self, obs_dims):
