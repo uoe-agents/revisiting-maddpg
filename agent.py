@@ -76,7 +76,7 @@ class Agent:
         return self.policy.apply(self.target_policy_params, key, obs)
 
     #@partial(jit, static_argnums=(0,))
-    def update_critic(self, all_obs, all_nobs, target_actions, sampled_actions, rewards, gamma):
+    def update_critic(self, all_obs, all_nobs, target_actions, sampled_actions, rewards, dones, gamma):
 
         @value_and_grad
         def _critic_loss_fn(
@@ -88,11 +88,12 @@ class Agent:
             target_actions,
             sampled_actions,
             rewards,
+            dones,
             gamma,
         ):
-            Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(target_critic_params, next(self.rng), all_nobs, target_actions)
-            target_ys = rewards + gamma * Q_vals
-            behaviour_ys = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs, sampled_actions)
+            Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(target_critic_params, next(self.rng), all_nobs, target_actions).squeeze(1)
+            target_ys = rewards + (1 - dones) * gamma * Q_vals
+            behaviour_ys = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs, sampled_actions).squeeze(1)
             return jnp.mean((jax.lax.stop_gradient(target_ys) - behaviour_ys)**2)
         
         critic_loss, critic_grads = _critic_loss_fn(
@@ -104,6 +105,7 @@ class Agent:
             target_actions,
             sampled_actions,
             rewards,
+            dones,
             gamma,
         )
         
@@ -128,7 +130,7 @@ class Agent:
             Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs,
                 sampled_actions.at[:,self.agent_idx,:].set(
                     vmap(policy_network.apply, in_axes=(None,None,0))(behaviour_policy_params, next(self.rng), agent_obs))
-            )
+            ).squeeze(1)
             return -jnp.mean(Q_vals)
     
         actor_loss, actor_grads = _actor_loss_fn(

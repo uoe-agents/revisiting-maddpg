@@ -56,6 +56,7 @@ class MADDPG:
                 target_actions=target_actions,
                 sampled_actions=sampled_actions,
                 rewards=sample['rwds'][:,ii],
+                dones=sample['dones'][:,ii],
                 gamma=self.gamma,
             ).item()
 
