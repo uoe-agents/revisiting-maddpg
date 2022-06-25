@@ -87,7 +87,7 @@ def train(config: argparse.Namespace, rng):
             buffer,
             max_timesteps=config.episode_length,
             steps_per_update=config.steps_per_update,
-            train=True,
+            train=config.training_on,
             render=False,
         )
 
@@ -119,6 +119,7 @@ if __name__ == "__main__":
     parser.add_argument("--actor_lr", default=1e-2, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
     parser.add_argument("--eval_freq", default=20, type=int)
+    parser.add_argument("--training_on", default=True, type=bool)
 
     config = parser.parse_args()
     
