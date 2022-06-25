@@ -91,7 +91,7 @@ def train(config: argparse.Namespace, rng):
                 train=config.training_on,
                 render=False,
             )
-            wandb.log({"Ep. Return (Train)": episode_return}, commit=False)
+            wandb.log({"Ep. Return (Train)": episode_return})
             pbar.set_postfix(episode_return=f"{np.round(episode_return, 2)}", refresh=True)
 
             if (config.eval_freq != 0 and epi_i % config.eval_freq == 0):
@@ -104,10 +104,7 @@ def train(config: argparse.Namespace, rng):
                     train=False,
                     render=config.render,
                 )
-                wandb.log({"Ep. Return (Eval)": episode_return}, commit=False)
-
-            if (epi_i % 100 == 0):
-                wandb.log({},commit=True)
+                wandb.log({"Ep. Return (Eval)": episode_return})
 
     env.close()
 
