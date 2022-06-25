@@ -8,6 +8,7 @@ from make_env import make_env
 import jax
 import jax.numpy as jnp
 import jax.random as jrand
+import haiku as hk
 from agent import Agent
 from maddpg import MADDPG
 jax.config.update('jax_platform_name', 'cpu')
@@ -58,7 +59,7 @@ def play_episode(
     return episode_return
 
 
-def train(config: argparse.Namespace, key):
+def train(config: argparse.Namespace, rng):
     env = make_env(config.env)
     #n_agents = env.n_agents
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
@@ -66,7 +67,7 @@ def train(config: argparse.Namespace, key):
         capacity=10e6,
         obs_dims=observation_dims, # TODO: change format of the replay buffer input??
         batch_size=config.batch_size,
-        key=key,
+        rng=rng,
     )
 
     maddpg = MADDPG(
@@ -75,7 +76,7 @@ def train(config: argparse.Namespace, key):
         actor_lr=config.actor_lr,
         hidden_dim_width=config.hidden_dim_width,
         gamma=config.gamma,
-        key=key,
+        rng=rng,
     )
 
     # with tqdm(range(config.n_episodes)) as pbar:
@@ -114,12 +115,13 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", default=1024, type=int)
     parser.add_argument("--render", default=False, type=bool)
     parser.add_argument("--hidden_dim_width", default=64, type=int)
-    parser.add_argument("--critic_lr", default=1e-4, type=float)
-    parser.add_argument("--actor_lr", default=1e-4, type=float)
+    parser.add_argument("--critic_lr", default=1e-2, type=float)
+    parser.add_argument("--actor_lr", default=1e-2, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
-    parser.add_argument("--eval_freq", default=100, type=int)
+    parser.add_argument("--eval_freq", default=20, type=int)
 
     config = parser.parse_args()
     
-    base_key = jrand.PRNGKey(config.seed)
-    train(config, base_key)
+    #base_key = jrand.PRNGKey(config.seed)
+    rng = hk.PRNGSequence(config.seed)
+    train(config, rng)

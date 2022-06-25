@@ -11,10 +11,11 @@ import utils
 from networks import ActorNetwork, CriticNetwork
 
 class MADDPG:
-    def __init__(self, env, critic_lr, actor_lr, hidden_dim_width, gamma, key):
+    def __init__(self, env, critic_lr, actor_lr, hidden_dim_width, gamma, rng):
         self.n_agents = env.n_agents
         self.gamma = gamma
-        self.key, *agent_keys = jrand.split(key,num=self.n_agents+1)
+        self.rng = rng
+        #self.key, *agent_keys = jrand.split(key,num=self.n_agents+1)
         self.agents = [
             Agent(
                 agent_idx=ii,
@@ -24,20 +25,21 @@ class MADDPG:
                 hidden_dim_width=hidden_dim_width,
                 critic_lr=critic_lr,
                 actor_lr=actor_lr,
-                agent_key=agent_keys[ii],
+                # agent_key=next(rng),#agent_keys[ii],
+                rng=rng,
             )
             for ii in range(self.n_agents)
         ]
 
     def acts(self, obs: List):
-        return [jnp.argmax(self.agents[ii].act_behaviour(obs[ii])) for ii in range(self.n_agents)]
+        return [jnp.argmax(self.agents[ii].act_behaviour(obs[ii], next(self.rng))) for ii in range(self.n_agents)]
 
     def update(self, sample):
         all_obs = einops.rearrange(sample['obs'], 'batch agent obs -> batch (agent obs)')
         all_nobs = einops.rearrange(sample['nobs'], 'batch agent nobs -> batch (agent nobs)')
         
         target_actions = einops.rearrange([
-            vmap(self.agents[ii].act_target)(sample['obs'][:,ii,:]) for ii in range(self.n_agents)
+            vmap(self.agents[ii].act_target, in_axes=(0,None))(sample['obs'][:,ii,:], next(self.rng)) for ii in range(self.n_agents)
         ], 'agent batch action -> batch agent action')
         # TODO: this seems to return same one-hot for all samples in batch ??
 
