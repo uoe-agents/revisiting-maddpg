@@ -11,6 +11,7 @@ import jax.random as jrand
 import haiku as hk
 from agent import Agent
 from maddpg import MADDPG
+import wandb
 
 def play_episode(
     env,
@@ -78,33 +79,36 @@ def train(config: argparse.Namespace, rng):
         rng=rng,
     )
 
-    # with tqdm(range(config.n_episodes)) as pbar:
-    for epi_i in tqdm(range(config.n_episodes)):
-        _ = play_episode(
-            env,
-            maddpg,
-            buffer,
-            max_timesteps=config.episode_length,
-            steps_per_update=config.steps_per_update,
-            train=config.training_on,
-            render=False,
-        )
-
-        if (config.eval_freq != 0 and epi_i % config.eval_freq == 0):
-            episode_return = play_episode(
+    with tqdm(range(config.n_episodes),
+        bar_format="{l_bar}{bar:30}{r_bar}{bar:-10b}") as pbar:
+        for epi_i in pbar:
+            _ = play_episode(
                 env,
                 maddpg,
                 buffer,
                 max_timesteps=config.episode_length,
-                steps_per_update=None,
-                train=False,
-                render=config.render,
+                steps_per_update=config.steps_per_update,
+                train=config.training_on,
+                render=False,
             )
-            print(f"Episode Return = {episode_return}")
 
+            if (config.eval_freq != 0 and epi_i % config.eval_freq == 0):
+                episode_return = play_episode(
+                    env,
+                    maddpg,
+                    buffer,
+                    max_timesteps=config.episode_length,
+                    steps_per_update=None,
+                    train=False,
+                    render=config.render,
+                )
+                wandb.log({"Episode Return": episode_return})
+                pbar.set_postfix(episode_return=f"{np.round(episode_return, 2)}", refresh=True)
     env.close()
 
 if __name__ == "__main__":
+    wandb.init(project="maddpg-jax-first-tests", entity="callumtilbury")#, mode="disabled")
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", default="simple_adversary")
     parser.add_argument("--seed", default=1, type=int)
@@ -122,6 +126,8 @@ if __name__ == "__main__":
 
     config = parser.parse_args()
     
+    wandb.config = config
+
     #base_key = jrand.PRNGKey(config.seed)
     rng = hk.PRNGSequence(config.seed)
     train(config, rng)
