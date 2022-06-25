@@ -82,7 +82,7 @@ def train(config: argparse.Namespace, rng):
     with tqdm(range(config.n_episodes),
         bar_format="{l_bar}{bar:30}{r_bar}{bar:-10b}") as pbar:
         for epi_i in pbar:
-            _ = play_episode(
+            episode_return = play_episode(
                 env,
                 maddpg,
                 buffer,
@@ -91,6 +91,8 @@ def train(config: argparse.Namespace, rng):
                 train=config.training_on,
                 render=False,
             )
+            wandb.log({"Ep. Return (Train)": episode_return}, commit=False)
+            pbar.set_postfix(episode_return=f"{np.round(episode_return, 2)}", refresh=True)
 
             if (config.eval_freq != 0 and epi_i % config.eval_freq == 0):
                 episode_return = play_episode(
@@ -102,8 +104,11 @@ def train(config: argparse.Namespace, rng):
                     train=False,
                     render=config.render,
                 )
-                wandb.log({"Episode Return": episode_return})
-                pbar.set_postfix(episode_return=f"{np.round(episode_return, 2)}", refresh=True)
+                wandb.log({"Ep. Return (Eval)": episode_return}, commit=False)
+
+            if (epi_i % 100 == 0):
+                wandb.log({},commit=True)
+
     env.close()
 
 if __name__ == "__main__":
@@ -121,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument("--critic_lr", default=1e-2, type=float)
     parser.add_argument("--actor_lr", default=1e-2, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
-    parser.add_argument("--eval_freq", default=20, type=int)
+    parser.add_argument("--eval_freq", default=1000, type=int)
     parser.add_argument("--training_on", default=True, type=bool)
 
     config = parser.parse_args()
