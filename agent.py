@@ -93,7 +93,7 @@ class Agent:
             Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(target_critic_params, next(self.rng), all_nobs, target_actions)
             target_ys = rewards + gamma * Q_vals
             behaviour_ys = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs, sampled_actions)
-            return jnp.mean((target_ys - behaviour_ys)**2)
+            return jnp.mean((jax.lax.stop_gradient(target_ys) - behaviour_ys)**2)
         
         critic_loss, critic_grads = _critic_loss_fn(
             self.behaviour_critic_params,
