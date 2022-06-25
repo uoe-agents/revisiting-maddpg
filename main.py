@@ -114,7 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--steps_per_update", default=100, type=int)
     parser.add_argument("--batch_size", default=1024, type=int)
     parser.add_argument("--render", default=False, type=bool)
-    parser.add_argument("--hidden_dim_width", default=64, type=int)
+    parser.add_argument("--hidden_dim_width", default=256, type=int)
     parser.add_argument("--critic_lr", default=1e-2, type=float)
     parser.add_argument("--actor_lr", default=1e-2, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)

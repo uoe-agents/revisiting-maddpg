@@ -38,7 +38,7 @@ class Agent:
         policy_in_size = self.max_obs_size #self.n_obs
         policy_out_size = self.n_acts
 
-        self.policy = hk.transform( lambda xx: ActorNetwork(self.n_obs, self.n_acts)(xx) )
+        self.policy = hk.transform( lambda xx: ActorNetwork(self.n_obs, self.n_acts, hidden_dim_width)(xx) )
         self.behaviour_policy_params = self.target_policy_params = \
             self.policy.init(next(self.rng), jnp.ones((policy_in_size,)))
         # ***** ****** *****
@@ -51,7 +51,7 @@ class Agent:
         #all_obs_size = self.max_obs_size * len(observation_space)
         act_size = action_space[0].n # TODO: For now, assuming that all agents have same size space --> I think this will be okay, with padding etc.
 
-        self.critic = hk.transform( lambda obs, acts : CriticNetwork(self.obs_dims)(obs, acts) )
+        self.critic = hk.transform( lambda obs, acts : CriticNetwork(self.obs_dims, hidden_dim_width)(obs, acts) )
         self.behaviour_critic_params = self.target_critic_params = \
             self.critic.init(
                 next(self.rng),
