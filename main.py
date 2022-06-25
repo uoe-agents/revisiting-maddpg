@@ -11,7 +11,6 @@ import jax.random as jrand
 import haiku as hk
 from agent import Agent
 from maddpg import MADDPG
-jax.config.update('jax_platform_name', 'cpu')
 
 def play_episode(
     env,
