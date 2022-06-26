@@ -86,7 +86,7 @@ def train(config: argparse.Namespace, rng):
                 buffer,
                 max_timesteps=config.episode_length,
                 steps_per_update=config.steps_per_update,
-                train=config.training_on,
+                train=(not config.disable_training),
                 render=False,
             )
             wandb.log({"Ep. Return (Train)": episode_return})
@@ -107,8 +107,6 @@ def train(config: argparse.Namespace, rng):
     env.close()
 
 if __name__ == "__main__":
-    wandb.init(project="maddpg-jax-first-tests", entity="callumtilbury")#, mode="disabled")
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", default="simple_adversary")
     parser.add_argument("--seed", default=1, type=int)
@@ -116,16 +114,22 @@ if __name__ == "__main__":
     parser.add_argument("--episode_length", default=50, type=int)
     parser.add_argument("--steps_per_update", default=100, type=int)
     parser.add_argument("--batch_size", default=1024, type=int)
-    parser.add_argument("--render", default=False, type=bool)
     parser.add_argument("--hidden_dim_width", default=256, type=int)
     parser.add_argument("--critic_lr", default=1e-2, type=float)
     parser.add_argument("--actor_lr", default=1e-2, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
     parser.add_argument("--eval_freq", default=100, type=int)
-    parser.add_argument("--training_on", default=True, type=bool)
+    parser.add_argument("--render", action="store_true")
+    parser.add_argument("--disable_training", action="store_true")
+    parser.add_argument("--disable_wandb", action="store_true")
 
     config = parser.parse_args()
-    
+
+    wandb.init(
+        project="maddpg-jax-first-tests", # TODO: parse as argument??
+        entity="callumtilbury",
+        mode="disabled" if (config.disable_wandb) else "online"
+    )
     wandb.config = config
 
     #base_key = jrand.PRNGKey(config.seed)
