@@ -52,7 +52,8 @@ class Agent:
             self.critic.init(
                 next(self.rng),
                 jnp.ones((sum_obs_dims,)),
-                jnp.ones((self.n_agents, act_size))
+                # jnp.ones((self.n_agents, act_size))
+                (jnp.ones((act_dim,)) for act_dim in act_dims),
             )
         # ***** ****** *****
 
