@@ -1,15 +1,13 @@
 import argparse
 from tqdm import tqdm
-#from pettingzoo.mpe import simple_adversary_v2
-import gym, rware
 from buffer import ReplayBuffer
 import numpy as np
-from make_env import make_env
 import jax
 import jax.numpy as jnp
 import jax.random as jrand
 import haiku as hk
 from agent import Agent
+from env_wrapper import create_env
 from maddpg import MADDPG
 import wandb
 
@@ -60,7 +58,7 @@ def play_episode(
 
 
 def train(config: argparse.Namespace, rng):
-    env = make_env(config.env)
+    env = create_env(config.env)
     #n_agents = env.n_agents
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
     buffer = ReplayBuffer(
@@ -123,7 +121,7 @@ if __name__ == "__main__":
     parser.add_argument("--critic_lr", default=1e-2, type=float)
     parser.add_argument("--actor_lr", default=1e-2, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
-    parser.add_argument("--eval_freq", default=1000, type=int)
+    parser.add_argument("--eval_freq", default=100, type=int)
     parser.add_argument("--training_on", default=True, type=bool)
 
     config = parser.parse_args()
