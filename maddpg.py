@@ -16,11 +16,14 @@ class MADDPG:
         self.gamma = gamma
         self.rng = rng
         #self.key, *agent_keys = jrand.split(key,num=self.n_agents+1)
+        obs_dims = [obs.shape[0] for obs in env.observation_space]
+        act_dims = [act.n for act in env.action_space]
         self.agents = [
             Agent(
                 agent_idx=ii,
-                observation_space=env.observation_space,
-                action_space=env.action_space,
+                obs_dims=obs_dims,
+                #action_space=env.action_space,
+                act_dims=act_dims,
                 # TODO: Consider changing this to **config
                 hidden_dim_width=hidden_dim_width,
                 critic_lr=critic_lr,

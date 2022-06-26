@@ -15,8 +15,8 @@ from networks import ActorNetwork, CriticNetwork
 class Agent:
     def __init__(self,
         agent_idx,
-        observation_space,
-        action_space,
+        obs_dims,
+        act_dims,
         hidden_dim_width,
         critic_lr,
         actor_lr,
@@ -26,37 +26,33 @@ class Agent:
     ):
         self.agent_idx = agent_idx
         self.tau = tau # TODO: Not sure yet if this should be class member or fn param
-        # TODO: Just do these calcs once in the beginning, and then pass the obs_dims array to actor
-        self.n_obs = observation_space[self.agent_idx].shape[0]
-        self.max_obs_size = max([obs.shape[0] for obs in observation_space])
-        self.obs_dims = jnp.array([obs.shape[0] for obs in observation_space])
-        self.n_acts = action_space[self.agent_idx].n
+        self.n_obs = obs_dims[self.agent_idx]
+        self.n_acts = act_dims[self.agent_idx]
+        self.n_agents = len(obs_dims)
         # -----------
         self.rng = rng
 
         # ***** POLICY *****
-        policy_in_size = self.max_obs_size #self.n_obs
-        policy_out_size = self.n_acts
-
-        self.policy = hk.transform( lambda xx: ActorNetwork(self.n_obs, self.n_acts, hidden_dim_width)(xx) )
+        self.policy = hk.transform(
+            lambda xx: ActorNetwork(
+                self.n_obs,
+                self.n_acts,
+                hidden_dim_width)(xx)
+        )
         self.behaviour_policy_params = self.target_policy_params = \
-            self.policy.init(next(self.rng), jnp.ones((policy_in_size,)))
+            self.policy.init(next(self.rng), jnp.ones((self.n_obs,)))
         # ***** ****** *****
 
         # ***** CRITIC *****
-        critic_in_size = \
-            sum([obs.shape[0] for obs in observation_space]) + \
-            sum([act.n for act in action_space])
-        all_obs_size = sum([obs.shape[0] for obs in observation_space])
-        #all_obs_size = self.max_obs_size * len(observation_space)
-        act_size = action_space[0].n # TODO: For now, assuming that all agents have same size space --> I think this will be okay, with padding etc.
+        sum_obs_dims = sum(obs_dims)
+        act_size = act_dims[0] # TODO: For now, assuming that all agents have same size space --> I think this will be okay, with padding etc.
 
-        self.critic = hk.transform( lambda obs, acts : CriticNetwork(self.obs_dims, hidden_dim_width)(obs, acts) )
+        self.critic = hk.transform( lambda obs, acts : CriticNetwork(obs_dims, hidden_dim_width)(obs, acts) )
         self.behaviour_critic_params = self.target_critic_params = \
             self.critic.init(
                 next(self.rng),
-                jnp.ones((all_obs_size,)),
-                jnp.ones((len(observation_space),act_size))
+                jnp.ones((sum_obs_dims,)),
+                jnp.ones((self.n_agents, act_size))
             )
         # ***** ****** *****
 

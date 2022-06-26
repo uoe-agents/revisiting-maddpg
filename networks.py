@@ -33,7 +33,7 @@ class ActorNetwork(hk.Module):
 class CriticNetwork(hk.Module):
     def __init__(self, obs_dims, hidden_dim_width):
         super(CriticNetwork, self).__init__()
-        max_obs_dim = jnp.max(obs_dims)
+        max_obs_dim = max(obs_dims)
         self.obs_mask = jnp.concatenate([
             jnp.arange(ii*max_obs_dim , ii*max_obs_dim + obs_dims[ii]) for ii in range(len(obs_dims))
         ])
