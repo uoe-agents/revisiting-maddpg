@@ -21,11 +21,12 @@ class Agent:
         critic_lr,
         actor_lr,
         rng,
-        tau=0.01,
+        gumbel_temp=0.75, # TODO: Pass as param
+        soft_update_size=0.01,  # TODO: Pass as param
         # more TODO
     ):
         self.agent_idx = agent_idx
-        self.tau = tau # TODO: Not sure yet if this should be class member or fn param
+        self.soft_update_size = soft_update_size
         self.n_obs = obs_dims[self.agent_idx]
         self.n_acts = act_dims[self.agent_idx]
         self.n_agents = len(obs_dims)
@@ -37,7 +38,9 @@ class Agent:
             lambda xx: ActorNetwork(
                 self.n_obs,
                 self.n_acts,
-                hidden_dim_width)(xx)
+                hidden_dim_width,
+                gumbel_temp,
+            )(xx)
         )
         self.behaviour_policy_params = self.target_policy_params = \
             self.policy.init(next(self.rng), jnp.ones((self.n_obs,)))
@@ -150,10 +153,10 @@ class Agent:
         self.target_policy_params = optax.incremental_update(
             self.behaviour_policy_params,
             self.target_policy_params,
-            step_size=self.tau,
+            step_size=self.soft_update_size,
         )
         self.target_critic_params = optax.incremental_update(
             self.behaviour_critic_params,
             self.target_critic_params,
-            step_size=self.tau,
+            step_size=self.soft_update_size,
         )

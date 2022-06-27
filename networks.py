@@ -9,11 +9,12 @@ import utils
 # TODO: Typing
 
 class ActorNetwork(hk.Module):
-    def __init__(self, obs_dim, n_actions, hidden_dim_width):
+    def __init__(self, obs_dim, n_actions, hidden_dim_width, gumbel_temp):
         super(ActorNetwork, self).__init__()
         self.obs_dim = obs_dim
         self.n_actions = n_actions
         self.hidden_dim_width = hidden_dim_width
+        self.gumbel_temp = gumbel_temp
 
     def __call__(self, obs: jnp.ndarray) -> jnp.DeviceArray:
         net = hk.Sequential(layers=[
@@ -27,7 +28,7 @@ class ActorNetwork(hk.Module):
         return  utils.gumbel_softmax_st(
             logits,
             key = hk.next_rng_key(),
-            tau = 0.75,
+            tau = self.gumbel_temp, # TODO: pass as param
         )
 
 class CriticNetwork(hk.Module):
