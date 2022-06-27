@@ -44,7 +44,6 @@ class MADDPG:
         target_actions = einops.rearrange([
             vmap(self.agents[ii].act_target, in_axes=(0,None))(sample['obs'][:,ii,:], next(self.rng)) for ii in range(self.n_agents)
         ], 'agent batch action -> batch agent action')
-        # TODO: this seems to return same one-hot for all samples in batch ??
 
         sampled_actions = einops.rearrange([
             jnn.one_hot(sample['acts'][:,ii], num_classes=self.agents[ii].n_acts)
