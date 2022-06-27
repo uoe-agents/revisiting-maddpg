@@ -80,7 +80,7 @@ def train(config: argparse.Namespace, rng):
     with tqdm(range(config.n_episodes),
         bar_format="{l_bar}{bar:30}{r_bar}{bar:-10b}") as pbar:
         for epi_i in pbar:
-            episode_return = play_episode(
+            _ = play_episode(
                 env,
                 maddpg,
                 buffer,
@@ -89,20 +89,21 @@ def train(config: argparse.Namespace, rng):
                 train=(not config.disable_training),
                 render=False,
             )
-            wandb.log({"Ep. Return (Train)": episode_return})
-            pbar.set_postfix(episode_return=f"{np.round(episode_return, 2)}", refresh=True)
 
             if (config.eval_freq != 0 and epi_i % config.eval_freq == 0):
-                episode_return = play_episode(
-                    env,
-                    maddpg,
-                    buffer,
-                    max_timesteps=config.episode_length,
-                    steps_per_update=None,
-                    train=False,
-                    render=config.render,
-                )
-                wandb.log({"Ep. Return (Eval)": episode_return})
+                eval_returns = []
+                for _ in range(config.eval_iterations):
+                    eval_returns.append(play_episode(
+                        env,
+                        maddpg,
+                        buffer,
+                        max_timesteps=config.episode_length,
+                        steps_per_update=None,
+                        train=False,
+                        render=config.render,
+                    ))
+                pbar.set_postfix(eval_return=f"{np.round(np.mean(eval_returns), 2)} ({np.std(eval_returns)})", refresh=True)
+                wandb.log({"Ep. Return (Eval)": np.mean(eval_returns)})
 
     env.close()
 
@@ -119,6 +120,7 @@ if __name__ == "__main__":
     parser.add_argument("--actor_lr", default=1e-2, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
     parser.add_argument("--eval_freq", default=100, type=int)
+    parser.add_argument("--eval_iterations", default=100, type=int)
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--disable_training", action="store_true")
     parser.add_argument("--disable_wandb", action="store_true")
