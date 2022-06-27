@@ -70,7 +70,7 @@ def train(config: argparse.Namespace, rng):
     )
 
     # Warm up:
-    for _ in tqdm(range(50)):
+    for _ in tqdm(range(config.warmup_episodes)):
         play_episode(
             env,
             buffer,
@@ -114,6 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--env", default="simple_adversary")
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--n_episodes", default=25000, type=int)
+    parser.add_argument("--warmup_episodes", default=10000, type=int)
     parser.add_argument("--timesteps", default=25000, type=int)
     parser.add_argument("--episode_length", default=50, type=int)
     parser.add_argument("--steps_per_update", default=100, type=int)
