@@ -106,16 +106,8 @@ class Agent:
             gamma,
         )
         
-        #critic_updates, self.critic_optim_state = self.critic_optim.update(critic_grads, self.critic_optim_state)
-        #self.behaviour_critic_params = optax.apply_updates(self.behaviour_critic_params, critic_updates)
-
-        self.behaviour_critic_params = optax.apply_updates(
-            self.behaviour_critic_params,
-            jax.tree_util.tree_map(
-                lambda xx : xx * -1e-2,
-                critic_grads
-            )
-        )
+        critic_updates, self.critic_optim_state = self.critic_optim.update(critic_grads, self.critic_optim_state)
+        self.behaviour_critic_params = optax.apply_updates(self.behaviour_critic_params, critic_updates)
 
         return critic_loss
 
@@ -148,16 +140,9 @@ class Agent:
             sampled_actions,
         )
 
-        # actor_updates, self.policy_optim_state = self.policy_optim.update(actor_grads, self.policy_optim_state)
-        # self.behaviour_policy_params = optax.apply_updates(self.behaviour_policy_params, actor_updates)
+        actor_updates, self.policy_optim_state = self.policy_optim.update(actor_grads, self.policy_optim_state)
+        self.behaviour_policy_params = optax.apply_updates(self.behaviour_policy_params, actor_updates)
 
-        self.behaviour_policy_params = optax.apply_updates(
-            self.behaviour_policy_params,
-            jax.tree_util.tree_map(
-                lambda xx : xx * 1e-2,
-                actor_grads
-            )
-        )
         return actor_loss
 
     def soft_update(self): # TODO: Tau here or as a class member?
