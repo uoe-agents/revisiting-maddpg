@@ -13,48 +13,40 @@ import wandb
 
 def play_episode(
     env,
-    maddpg : MADDPG,
     buffer : ReplayBuffer,
-    max_timesteps,
-    steps_per_update,
-    train=True,
+    max_timesteps_per_episode,
+    action_fn,
     render=False,
 ):
     obs = env.reset()
-    dones = [False] * maddpg.n_agents
+    dones = [False] * env.n_agents
 
     steps = 0
     episode_return = 0
 
-    while not any(dones):
+    while not any(dones) and (steps < max_timesteps_per_episode):
         if (render): env.render()
 
-        acts = maddpg.acts(obs)
+        acts = action_fn(obs)#maddpg.acts(obs)
         nobs, rwds, dones, _ = env.step(acts)
 
-        if train:
-            buffer.store(
-                obs=obs,
-                acts=acts,
-                rwds=rwds,
-                nobs=nobs,
-                dones=dones,
-            )
-
-            if buffer.ready() and (steps % steps_per_update == 0): # TODO: improve training interval setup
-                sample = buffer.sample()
-                maddpg.update(sample)
+        buffer.store(
+            obs=obs,
+            acts=acts,
+            rwds=rwds,
+            nobs=nobs,
+            dones=dones,
+        )
 
         steps += 1
-
         episode_return += sum(rwds)
-
-        if (steps > max_timesteps):
-            break
-
         obs = nobs
 
-    return episode_return
+    return episode_return, steps
+    # if buffer.ready() and (steps % steps_per_update == 0): # TODO: improve training interval setup
+    #     sample = buffer.sample()
+    #     maddpg.update(sample)
+
 
 
 def train(config: argparse.Namespace, rng):
@@ -77,32 +69,42 @@ def train(config: argparse.Namespace, rng):
         rng=rng,
     )
 
+    # Warm up:
+    for _ in tqdm(range(50)):
+        play_episode(
+            env,
+            buffer,
+            max_timesteps_per_episode=config.episode_length,
+            action_fn=(lambda _ : env.action_space.sample()),
+        )
+
+    print(f"Warmed up with {buffer.entries} entries")
+
     with tqdm(range(config.n_episodes),
         bar_format="{l_bar}{bar:30}{r_bar}{bar:-10b}") as pbar:
         for epi_i in pbar:
             _ = play_episode(
                 env,
-                maddpg,
                 buffer,
-                max_timesteps=config.episode_length,
-                steps_per_update=config.steps_per_update,
-                train=(not config.disable_training),
+                max_timesteps_per_episode=config.episode_length,
+                action_fn=maddpg.acts,
                 render=False,
             )
+
+            sample = buffer.sample()
+            maddpg.update(sample)
 
             if (config.eval_freq != 0 and epi_i % config.eval_freq == 0):
                 eval_returns = []
                 for _ in range(config.eval_iterations):
                     eval_returns.append(play_episode(
                         env,
-                        maddpg,
                         buffer,
-                        max_timesteps=config.episode_length,
-                        steps_per_update=None,
-                        train=False,
+                        max_timesteps_per_episode=config.episode_length,
+                        action_fn=maddpg.acts,
                         render=config.render,
                     ))
-                pbar.set_postfix(eval_return=f"{np.round(np.mean(eval_returns), 2)} ({np.std(eval_returns)})", refresh=True)
+                pbar.set_postfix(eval_return=f"{np.round(np.mean(eval_returns), 2)} ({np.round(np.std(eval_returns),2)})", refresh=True)
                 wandb.log({"Ep. Return (Eval)": np.mean(eval_returns)})
 
     env.close()
@@ -112,6 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--env", default="simple_adversary")
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--n_episodes", default=25000, type=int)
+    parser.add_argument("--timesteps", default=25000, type=int)
     parser.add_argument("--episode_length", default=50, type=int)
     parser.add_argument("--steps_per_update", default=100, type=int)
     parser.add_argument("--batch_size", default=1024, type=int)
