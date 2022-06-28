@@ -57,8 +57,8 @@ class MADDPG:
                 all_nobs=all_nobs,
                 target_actions=target_actions,
                 sampled_actions=sampled_actions,
-                rewards=sample['rwds'][:,ii],
-                dones=sample['dones'][:,ii],
+                rewards=jnp.expand_dims(sample['rwds'][:,ii], axis=1),
+                dones=jnp.expand_dims(sample['dones'][:,ii], axis=1),
                 gamma=self.gamma,
             ).item()
 

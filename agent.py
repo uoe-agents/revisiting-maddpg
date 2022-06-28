@@ -91,9 +91,9 @@ class Agent:
             dones,
             gamma,
         ):
-            Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(target_critic_params, next(self.rng), all_nobs, target_actions).squeeze(1)
+            Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(target_critic_params, next(self.rng), all_nobs, target_actions)
             target_ys = rewards + (1 - dones) * gamma * Q_vals
-            behaviour_ys = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs, sampled_actions).squeeze(1)
+            behaviour_ys = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs, sampled_actions)
             return jnp.mean((jax.lax.stop_gradient(target_ys) - behaviour_ys)**2)
         
         critic_loss, critic_grads = _critic_loss_fn(
