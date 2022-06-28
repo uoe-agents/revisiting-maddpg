@@ -48,15 +48,17 @@ class Agent:
 
         # ***** CRITIC *****
         sum_obs_dims = sum(obs_dims)
+        sum_act_dims = sum(act_dims)
         act_size = act_dims[0] # TODO: For now, assuming that all agents have same size space --> I think this will be okay, with padding etc.
 
-        self.critic = hk.transform( lambda obs, acts : CriticNetwork(obs_dims, hidden_dim_width)(obs, acts) )
+        self.critic = hk.without_apply_rng(hk.transform(lambda obs, acts : CriticNetwork(obs_dims, hidden_dim_width)(obs, acts)))
         self.behaviour_critic_params = self.target_critic_params = \
             self.critic.init(
                 next(self.rng),
                 jnp.ones((sum_obs_dims,)),
+                jnp.ones((sum_act_dims,)),
                 # jnp.ones((self.n_agents, act_size))
-                (jnp.ones((act_dim,)) for act_dim in act_dims),
+                #(jnp.ones((act_dim,)) for act_dim in act_dims),
             )
         # ***** ****** *****
 
@@ -75,14 +77,13 @@ class Agent:
     def act_target(self, obs, key):
         return self.policy.apply(self.target_policy_params, key, obs)
 
-    #@partial(jit, static_argnums=(0,))
-    def update_critic(self, all_obs, all_nobs, target_actions, sampled_actions, rewards, dones, gamma):
+    def update_critic(self, all_obs, all_nobs, target_actions_per_agent, sampled_actions_per_agent, rewards, dones, gamma):
 
+        @partial(jit, static_argnames=("gamma",))
         @value_and_grad
         def _critic_loss_fn(
             behaviour_critic_params,
             target_critic_params,
-            critic_network,
             all_obs,
             all_nobs,
             target_actions,
@@ -91,15 +92,16 @@ class Agent:
             dones,
             gamma,
         ):
-            Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(target_critic_params, next(self.rng), all_nobs, target_actions)
+            Q_vals = vmap(self.critic.apply, in_axes=(None,0,0))(target_critic_params, all_nobs, target_actions)
             target_ys = rewards + (1 - dones) * gamma * Q_vals
-            behaviour_ys = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs, sampled_actions)
+            behaviour_ys = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
             return jnp.mean((jax.lax.stop_gradient(target_ys) - behaviour_ys)**2)
-        
+
+        target_actions = jnp.concatenate(target_actions_per_agent, axis=1)
+        sampled_actions = jnp.concatenate(sampled_actions_per_agent, axis=1)
         critic_loss, critic_grads = _critic_loss_fn(
             self.behaviour_critic_params,
             self.target_critic_params,
-            self.critic,
             all_obs,
             all_nobs,
             target_actions,
@@ -114,30 +116,26 @@ class Agent:
 
         return critic_loss
 
-    #@partial(jit, static_argnums=(0,))
     def update_actor(self, all_obs, agent_obs, sampled_actions):
         
         @value_and_grad
         def _actor_loss_fn(
             behaviour_policy_params,
-            policy_network,
             behaviour_critic_params,
-            critic_network,
             all_obs,
             agent_obs,
-            sampled_actions,
+            sampled_actions_per_agent,
         ):
-            Q_vals = vmap(critic_network.apply, in_axes=(None,None,0,0))(behaviour_critic_params, next(self.rng), all_obs,
-                sampled_actions.at[:,self.agent_idx,:].set(
-                    vmap(policy_network.apply, in_axes=(None,None,0))(behaviour_policy_params, next(self.rng), agent_obs))
-            ).squeeze(1)
+            _sampled_actions_per_agent = deepcopy(sampled_actions_per_agent) # TODO - can we avoid this?? :(
+            _sampled_actions_per_agent[self.agent_idx] = vmap(self.policy.apply, in_axes=(None,None,0))(behaviour_policy_params, next(self.rng), agent_obs)
+            sampled_actions = jnp.concatenate(_sampled_actions_per_agent, axis=1)
+
+            Q_vals = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
             return -jnp.mean(Q_vals)
     
         actor_loss, actor_grads = _actor_loss_fn(
             self.behaviour_policy_params,
-            self.policy,
             self.behaviour_critic_params,
-            self.critic,
             all_obs,
             agent_obs,
             sampled_actions,

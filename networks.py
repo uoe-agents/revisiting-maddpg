@@ -40,7 +40,29 @@ class CriticNetwork(hk.Module):
         ])
         self.hidden_dim_width = hidden_dim_width
 
-    def __call__(self, all_obs, acts_per_agent: List) -> jnp.DeviceArray:
+    # def __call__(self, all_obs, acts_per_agent: List) -> jnp.DeviceArray:
+    #     net = hk.Sequential(layers=[
+    #         hk.Linear(self.hidden_dim_width), # TODO: w_init = ? 
+    #         jnn.relu,
+    #         hk.Linear(self.hidden_dim_width),
+    #         jnn.relu,
+    #         hk.Linear(1),
+    #     ])
+    #     critic_input = jnp.concatenate((all_obs[self.obs_mask], *acts_per_agent))
+    #     return net(critic_input)
+
+    # def __call__(self, all_obs, acts) -> jnp.DeviceArray:
+    #     net = hk.Sequential(layers=[
+    #         hk.Linear(self.hidden_dim_width), # TODO: w_init = ? 
+    #         jnn.relu,
+    #         hk.Linear(self.hidden_dim_width),
+    #         jnn.relu,
+    #         hk.Linear(1),
+    #     ])
+    #     critic_input = jnp.concatenate((all_obs[self.obs_mask], acts))
+    #     return net(critic_input)
+
+    def __call__(self, all_obs, *acts) -> jnp.DeviceArray:
         net = hk.Sequential(layers=[
             hk.Linear(self.hidden_dim_width), # TODO: w_init = ? 
             jnn.relu,
@@ -48,5 +70,5 @@ class CriticNetwork(hk.Module):
             jnn.relu,
             hk.Linear(1),
         ])
-        critic_input = jnp.concatenate((all_obs[self.obs_mask], *acts_per_agent))
+        critic_input = jnp.concatenate((all_obs[self.obs_mask], *acts))
         return net(critic_input)
