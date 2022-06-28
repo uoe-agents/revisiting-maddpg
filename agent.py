@@ -47,19 +47,14 @@ class Agent:
         # ***** ****** *****
 
         # ***** CRITIC *****
-        sum_obs_dims = sum(obs_dims)
-        sum_act_dims = sum(act_dims)
-        act_size = act_dims[0] # TODO: For now, assuming that all agents have same size space --> I think this will be okay, with padding etc.
-
         self.critic = hk.without_apply_rng(hk.transform(lambda obs, acts : CriticNetwork(obs_dims, hidden_dim_width)(obs, acts)))
         self.behaviour_critic_params = self.target_critic_params = \
             self.critic.init(
                 next(self.rng),
-                jnp.ones((sum_obs_dims,)),
-                jnp.ones((sum_act_dims,)),
-                # jnp.ones((self.n_agents, act_size))
-                #(jnp.ones((act_dim,)) for act_dim in act_dims),
+                jnp.ones((sum(obs_dims),)),
+                jnp.ones((sum(act_dims),)),
             )
+        self.batched_critic_apply = vmap(self.critic.apply, in_axes=(None,0,0))
         # ***** ****** *****
 
         # OPTIMISERS
@@ -92,9 +87,13 @@ class Agent:
             dones,
             gamma,
         ):
-            Q_vals = vmap(self.critic.apply, in_axes=(None,0,0))(target_critic_params, all_nobs, target_actions)
+            # Q_vals = vmap(self.critic.apply, in_axes=(None,0,0))(target_critic_params, all_nobs, target_actions)
+            Q_vals = self.batched_critic_apply(target_critic_params, all_nobs, target_actions)
             target_ys = rewards + (1 - dones) * gamma * Q_vals
-            behaviour_ys = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
+            
+            # behaviour_ys = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
+            behaviour_ys = self.batched_critic_apply(behaviour_critic_params, all_obs, sampled_actions)
+
             return jnp.mean((jax.lax.stop_gradient(target_ys) - behaviour_ys)**2)
 
         target_actions = jnp.concatenate(target_actions_per_agent, axis=1)
@@ -130,7 +129,9 @@ class Agent:
             _sampled_actions_per_agent[self.agent_idx] = vmap(self.policy.apply, in_axes=(None,None,0))(behaviour_policy_params, next(self.rng), agent_obs)
             sampled_actions = jnp.concatenate(_sampled_actions_per_agent, axis=1)
 
-            Q_vals = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
+            # Q_vals = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
+            Q_vals = self.batched_critic_apply(behaviour_critic_params, all_obs, sampled_actions)
+            
             return -jnp.mean(Q_vals)
     
         actor_loss, actor_grads = _actor_loss_fn(
