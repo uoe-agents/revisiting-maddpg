@@ -79,7 +79,7 @@ class Agent:
 
     def update_critic(self, all_obs, all_nobs, target_actions_per_agent, sampled_actions_per_agent, rewards, dones, gamma):
 
-        @partial(jit, static_argnames=("gamma",))
+        @jit
         @value_and_grad
         def _critic_loss_fn(
             behaviour_critic_params,
