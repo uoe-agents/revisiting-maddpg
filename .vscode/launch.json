@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--disable_wandb"]
+            "args": ["--disable_wandb", "--warmup_episodes", "50"]
         }
     ]
 }

@@ -41,32 +41,33 @@ class MADDPG:
         all_obs = einops.rearrange(sample['obs'], 'batch agent obs -> batch (agent obs)')
         all_nobs = einops.rearrange(sample['nobs'], 'batch agent nobs -> batch (agent nobs)')
         
-        target_actions = einops.rearrange([
+        target_actions = [
             vmap(self.agents[ii].act_target, in_axes=(0,None))(sample['nobs'][:,ii,:], next(self.rng)) for ii in range(self.n_agents)
-        ], 'agent batch action -> batch agent action') # OBS or NOBS?
+        ] # OBS or NOBS?
 
-        sampled_actions = einops.rearrange([
+        sampled_actions = [
             jnn.one_hot(sample['acts'][:,ii], num_classes=self.agents[ii].n_acts)
             for ii in range(self.n_agents)
-        ], 'agent batch action -> batch agent action')
+        ] # agent batch actions
 
         critic_loss = 0; actor_loss = 0
         for ii, agent in enumerate(self.agents):
-            critic_loss += agent.update_critic(
+            agent.update_critic(
                 all_obs=all_obs,
                 all_nobs=all_nobs,
-                target_actions=target_actions,
-                sampled_actions=sampled_actions,
-                rewards=sample['rwds'][:,ii],
-                dones=sample['dones'][:,ii],
+                target_actions_per_agent=target_actions,
+                sampled_actions_per_agent=sampled_actions,
+                rewards=jnp.expand_dims(sample['rwds'][:,ii], axis=1),
+                dones=jnp.expand_dims(sample['dones'][:,ii], axis=1),
                 gamma=self.gamma,
-            ).item()
+            )#.item()
 
-            actor_loss += agent.update_actor(
+            #actor_loss += 
+            agent.update_actor(
                 all_obs=all_obs,
                 agent_obs=sample['obs'][:,ii,:],
                 sampled_actions=sampled_actions,
-            ).item()
+            )#.item()
         
         #print(f"Critic Loss = {critic_loss}; Actor Loss = {actor_loss}")
 
