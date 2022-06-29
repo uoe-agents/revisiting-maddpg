@@ -44,7 +44,7 @@ def play_episode(
         episode_return += sum(rwds)
         obs = nobs
 
-    return episode_return#, steps
+    return episode_return
 
 def train(config: argparse.Namespace, rng):
     env = create_env(config.env)
@@ -139,6 +139,5 @@ if __name__ == "__main__":
     )
     wandb.config = config
 
-    #base_key = jrand.PRNGKey(config.seed)
     rng = hk.PRNGSequence(config.seed)
     train(config, rng)
