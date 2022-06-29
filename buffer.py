@@ -38,11 +38,10 @@ class ReplayBuffer:
     def sample(self):
         if not self.ready(): return None
 
-        #self.key, sample_key = jrand.split(self.key)
         idxs = jrand.choice(next(self.rng),
             np.min((self.entries, self.capacity)),
             shape=(self.batch_size,),
-            replace=True,
+            replace=True, # TODO: Shouldn't be a major problem, right?
         )
 
         return {
