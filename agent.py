@@ -22,7 +22,7 @@ class Agent:
         actor_lr,
         gradient_clip,
         rng,
-        gumbel_temp=0.75, # TODO: Pass as param
+        gumbel_temp, # TODO: Pass as param
         soft_update_size=0.01,  # TODO: Pass as param
         # more TODO
     ):
@@ -81,7 +81,7 @@ class Agent:
 
     def update_critic(self, all_obs, all_nobs, target_actions_per_agent, sampled_actions_per_agent, rewards, dones, gamma):
 
-        #@jit
+        #@jit # TODO: Jit makes things slower? :(
         @grad
         def _critic_loss_fn(
             behaviour_critic_params,
@@ -94,18 +94,14 @@ class Agent:
             dones,
             gamma,
         ):
-            # Q_vals = vmap(self.critic.apply, in_axes=(None,0,0))(target_critic_params, all_nobs, target_actions)
-            Q_vals = self.batched_critic_apply(target_critic_params, all_nobs, target_actions)
-            target_ys = rewards + (1 - dones) * gamma * Q_vals
-            
-            # behaviour_ys = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
-            behaviour_ys = self.batched_critic_apply(behaviour_critic_params, all_obs, sampled_actions)
-            
-            return jnp.mean((jax.lax.stop_gradient(target_ys) - behaviour_ys)**2)
+            Q_next_target = self.batched_critic_apply(target_critic_params, all_nobs, target_actions)
+            target_ys = rewards + (1 - dones) * gamma * Q_next_target
+            behaviour_ys = self.batched_critic_apply(behaviour_critic_params, all_obs, sampled_actions)            
+            return jnp.mean( (jax.lax.stop_gradient(target_ys) - behaviour_ys)**2 )
 
         target_actions = jnp.concatenate(target_actions_per_agent, axis=1)
         sampled_actions = jnp.concatenate(sampled_actions_per_agent, axis=1)
-        #critic_loss,
+
         critic_grads = _critic_loss_fn(
             self.behaviour_critic_params,
             self.target_critic_params,
@@ -117,11 +113,9 @@ class Agent:
             dones,
             gamma,
         )
-        
+
         critic_updates, self.critic_optim_state = self.critic_optim.update(critic_grads, self.critic_optim_state)
         self.behaviour_critic_params = optax.apply_updates(self.behaviour_critic_params, critic_updates)
-
-        #return critic_loss
 
     def update_actor(self, all_obs, agent_obs, sampled_actions):
 
@@ -134,18 +128,19 @@ class Agent:
             sampled_actions_per_agent,
         ):
             _sampled_actions_per_agent = deepcopy(sampled_actions_per_agent) # TODO - can we avoid this?? :(
-            keys = jrand.split(next(self.rng), num=agent_obs.shape[0])
-            # _sampled_actions_per_agent[self.agent_idx] = vmap(self.policy.apply, in_axes=(None,None,0))(behaviour_policy_params, next(self.rng), agent_obs)
-            new_actions = vmap(self.policy.apply, in_axes=(None,0,0))(behaviour_policy_params, agent_obs, keys)
-            _sampled_actions_per_agent[self.agent_idx] = new_actions
+            
+            keys = jrand.split(next(self.rng), num=agent_obs.shape[0]) # TODO: Temp fix, hopefully
+            
+            policy_actions = vmap(self.policy.apply, in_axes=(None,0,0))(behaviour_policy_params, agent_obs, keys)
+            
+            _sampled_actions_per_agent[self.agent_idx] = policy_actions
+            
             sampled_actions = jnp.concatenate(_sampled_actions_per_agent, axis=1)
 
-            # Q_vals = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
             Q_vals = self.batched_critic_apply(behaviour_critic_params, all_obs, sampled_actions)
             
-            return -jnp.mean(Q_vals)
+            return -jnp.mean(Q_vals) # TODO: add policy regulariser
     
-        #actor_loss,
         actor_grads = _actor_loss_fn(
             self.behaviour_policy_params,
             self.behaviour_critic_params,
@@ -156,8 +151,6 @@ class Agent:
 
         actor_updates, self.policy_optim_state = self.policy_optim.update(actor_grads, self.policy_optim_state)
         self.behaviour_policy_params = optax.apply_updates(self.behaviour_policy_params, actor_updates)
-
-        #return actor_loss
 
     def soft_update(self): # TODO: Tau here or as a class member?
         # Soft updates to targets
