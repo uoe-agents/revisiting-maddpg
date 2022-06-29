@@ -11,7 +11,7 @@ import utils
 from networks import ActorNetwork, CriticNetwork
 
 class MADDPG:
-    def __init__(self, env, critic_lr, actor_lr, hidden_dim_width, gamma, rng):
+    def __init__(self, env, critic_lr, actor_lr, gradient_clip, hidden_dim_width, gamma, rng):
         self.n_agents = env.n_agents
         self.gamma = gamma
         self.rng = rng
@@ -28,6 +28,7 @@ class MADDPG:
                 hidden_dim_width=hidden_dim_width,
                 critic_lr=critic_lr,
                 actor_lr=actor_lr,
+                gradient_clip=gradient_clip,
                 # agent_key=next(rng),#agent_keys[ii],
                 rng=rng,
             )

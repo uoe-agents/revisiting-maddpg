@@ -64,6 +64,7 @@ def train(config: argparse.Namespace, rng):
         env=env,
         critic_lr=config.critic_lr,
         actor_lr=config.actor_lr,
+        gradient_clip=config.gradient_clip,
         hidden_dim_width=config.hidden_dim_width,
         gamma=config.gamma,
         rng=rng,
@@ -122,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("--hidden_dim_width", default=256, type=int)
     parser.add_argument("--critic_lr", default=1e-2, type=float)
     parser.add_argument("--actor_lr", default=1e-2, type=float)
+    parser.add_argument("--gradient_clip", default=1.0, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
     parser.add_argument("--eval_freq", default=100, type=int)
     parser.add_argument("--eval_iterations", default=100, type=int)

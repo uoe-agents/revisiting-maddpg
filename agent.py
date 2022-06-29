@@ -20,6 +20,7 @@ class Agent:
         hidden_dim_width,
         critic_lr,
         actor_lr,
+        gradient_clip,
         rng,
         gumbel_temp=0.75, # TODO: Pass as param
         soft_update_size=0.01,  # TODO: Pass as param
@@ -58,10 +59,16 @@ class Agent:
         # ***** ****** *****
 
         # OPTIMISERS
-        self.policy_optim = optax.adam(actor_lr)
+        self.policy_optim = optax.chain(
+            optax.clip_by_global_norm(gradient_clip),
+            optax.adam(actor_lr),
+        )
         self.policy_optim_state = self.policy_optim.init(self.behaviour_policy_params)
 
-        self.critic_optim = optax.adam(critic_lr)
+        self.critic_optim = optax.chain(
+            optax.clip_by_global_norm(gradient_clip),
+            optax.adam(critic_lr),
+        )
         self.critic_optim_state = self.critic_optim.init(self.behaviour_critic_params)
 
     @partial(jit, static_argnums=(0,))
@@ -93,7 +100,7 @@ class Agent:
             
             # behaviour_ys = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
             behaviour_ys = self.batched_critic_apply(behaviour_critic_params, all_obs, sampled_actions)
-
+            
             return jnp.mean((jax.lax.stop_gradient(target_ys) - behaviour_ys)**2)
 
         target_actions = jnp.concatenate(target_actions_per_agent, axis=1)
