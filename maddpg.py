@@ -52,7 +52,7 @@ class MADDPG:
 
         critic_loss = 0; actor_loss = 0
         for ii, agent in enumerate(self.agents):
-            critic_loss += agent.update_critic(
+            agent.update_critic(
                 all_obs=all_obs,
                 all_nobs=all_nobs,
                 target_actions_per_agent=target_actions,
@@ -60,13 +60,14 @@ class MADDPG:
                 rewards=jnp.expand_dims(sample['rwds'][:,ii], axis=1),
                 dones=jnp.expand_dims(sample['dones'][:,ii], axis=1),
                 gamma=self.gamma,
-            ).item()
+            )#.item()
 
-            actor_loss += agent.update_actor(
+            #actor_loss += 
+            agent.update_actor(
                 all_obs=all_obs,
                 agent_obs=sample['obs'][:,ii,:],
                 sampled_actions=sampled_actions,
-            ).item()
+            )#.item()
         
         #print(f"Critic Loss = {critic_loss}; Actor Loss = {actor_loss}")
 
