@@ -61,13 +61,13 @@ class Agent:
         # OPTIMISERS
         self.policy_optim = optax.chain(
             optax.clip_by_global_norm(gradient_clip),
-            optax.adam(actor_lr),
+            optax.sgd(actor_lr),
         )
         self.policy_optim_state = self.policy_optim.init(self.behaviour_policy_params)
 
         self.critic_optim = optax.chain(
             optax.clip_by_global_norm(gradient_clip),
-            optax.adam(critic_lr),
+            optax.sgd(critic_lr),
         )
         self.critic_optim_state = self.critic_optim.init(self.behaviour_critic_params)
 
