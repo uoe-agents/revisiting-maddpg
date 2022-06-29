@@ -40,8 +40,9 @@ class MADDPG:
         all_obs = einops.rearrange(sample['obs'], 'batch agent obs -> batch (agent obs)')
         all_nobs = einops.rearrange(sample['nobs'], 'batch agent nobs -> batch (agent nobs)')
         
+        keys = jrand.split(next(self.rng), num=all_obs.shape[0])
         target_actions = [  # OBS or NOBS?!
-            vmap(self.agents[ii].act_target, in_axes=(0,None))(sample['nobs'][:,ii,:], next(self.rng))
+            vmap(self.agents[ii].act_target, in_axes=(0,0))(sample['nobs'][:,ii,:], keys)
             for ii in range(self.n_agents)
         ]  # agent batch actions
 
