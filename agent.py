@@ -126,7 +126,9 @@ class Agent:
             sampled_actions_per_agent,
         ):
             _sampled_actions_per_agent = deepcopy(sampled_actions_per_agent) # TODO - can we avoid this?? :(
-            _sampled_actions_per_agent[self.agent_idx] = vmap(self.policy.apply, in_axes=(None,None,0))(behaviour_policy_params, next(self.rng), agent_obs)
+            keys = jrand.split(next(self.rng), num=agent_obs.shape[0])
+            # _sampled_actions_per_agent[self.agent_idx] = vmap(self.policy.apply, in_axes=(None,None,0))(behaviour_policy_params, next(self.rng), agent_obs)
+            _sampled_actions_per_agent[self.agent_idx] = vmap(self.policy.apply, in_axes=(None,0,0))(behaviour_policy_params, keys, agent_obs)
             sampled_actions = jnp.concatenate(_sampled_actions_per_agent, axis=1)
 
             # Q_vals = vmap(self.critic.apply, in_axes=(None,0,0))(behaviour_critic_params, all_obs, sampled_actions)
