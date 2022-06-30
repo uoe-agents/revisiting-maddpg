@@ -2,10 +2,6 @@ import argparse
 from tqdm import tqdm
 from buffer import ReplayBuffer
 import numpy as np
-import jax
-import jax.numpy as jnp
-import jax.random as jrand
-import haiku as hk
 from agent import Agent
 from env_wrapper import create_env
 from maddpg import MADDPG
@@ -46,14 +42,13 @@ def play_episode(
 
     return episode_return
 
-def train(config: argparse.Namespace, rng):
+def train(config: argparse.Namespace):
     env = create_env(config.env)
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
     buffer = ReplayBuffer(
         capacity=10e6,
         obs_dims=observation_dims, # TODO: change format of the replay buffer input??
         batch_size=config.batch_size,
-        rng=rng,
     )
 
     maddpg = MADDPG(
@@ -64,7 +59,6 @@ def train(config: argparse.Namespace, rng):
         hidden_dim_width=config.hidden_dim_width,
         gamma=config.gamma,
         gumbel_temp=config.gumbel_temp,
-        rng=rng,
     )
 
     # Warm up:
@@ -133,11 +127,10 @@ if __name__ == "__main__":
     config = parser.parse_args()
 
     wandb.init(
-        project="maddpg-jax-first-tests", # TODO: parse as argument??
+        project="maddpg-pytorch-first-tests", # TODO: parse as argument??
         entity="callumtilbury",
         mode="disabled" if (config.disable_wandb) else "online"
     )
     wandb.config = config
 
-    rng = hk.PRNGSequence(config.seed)
-    train(config, rng)
+    train(config)
