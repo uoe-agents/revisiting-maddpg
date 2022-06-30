@@ -5,9 +5,6 @@ import jax.nn as jnn
 import jax.numpy as jnp
 import utils
 
-# TODO: PASS HIDDEN DIMS & DEPTH AS A PARAM
-# TODO: Typing
-
 class ActorNetwork(hk.Module):
     def __init__(self, obs_dim, n_actions, hidden_dim_width, gumbel_temp):
         super(ActorNetwork, self).__init__()
@@ -39,28 +36,6 @@ class CriticNetwork(hk.Module):
             jnp.arange(ii*max_obs_dim , ii*max_obs_dim + obs_dims[ii]) for ii in range(len(obs_dims))
         ])
         self.hidden_dim_width = hidden_dim_width
-
-    # def __call__(self, all_obs, acts_per_agent: List) -> jnp.DeviceArray:
-    #     net = hk.Sequential(layers=[
-    #         hk.Linear(self.hidden_dim_width), # TODO: w_init = ? 
-    #         jnn.relu,
-    #         hk.Linear(self.hidden_dim_width),
-    #         jnn.relu,
-    #         hk.Linear(1),
-    #     ])
-    #     critic_input = jnp.concatenate((all_obs[self.obs_mask], *acts_per_agent))
-    #     return net(critic_input)
-
-    # def __call__(self, all_obs, acts) -> jnp.DeviceArray:
-    #     net = hk.Sequential(layers=[
-    #         hk.Linear(self.hidden_dim_width), # TODO: w_init = ? 
-    #         jnn.relu,
-    #         hk.Linear(self.hidden_dim_width),
-    #         jnn.relu,
-    #         hk.Linear(1),
-    #     ])
-    #     critic_input = jnp.concatenate((all_obs[self.obs_mask], acts))
-    #     return net(critic_input)
 
     def __call__(self, all_obs, *acts) -> jnp.DeviceArray:
         net = hk.Sequential(layers=[
