@@ -3,30 +3,23 @@ import haiku as hk
 import jax.random as jrand
 import jax.nn as jnn
 import jax.numpy as jnp
-import utils
 
 class ActorNetwork(hk.Module):
-    def __init__(self, obs_dim, n_actions, hidden_dim_width, gumbel_temp):
+    def __init__(self, obs_dim, n_actions, hidden_dim_width):
         super(ActorNetwork, self).__init__()
         self.obs_dim = obs_dim
         self.n_actions = n_actions
         self.hidden_dim_width = hidden_dim_width
-        self.gumbel_temp = gumbel_temp
 
-    def __call__(self, obs: jnp.ndarray, noise_key:  jrand.KeyArray) -> jnp.DeviceArray:
+    def __call__(self, obs: jnp.ndarray) -> jnp.DeviceArray:
         net = hk.Sequential(layers=[
-            hk.Linear(self.hidden_dim_width), # TODO: w_init = ?
+            hk.Linear(self.hidden_dim_width),
             jnn.relu,
             hk.Linear(self.hidden_dim_width),
             jnn.relu,
             hk.Linear(self.n_actions),
         ])
-        logits = net(obs[:self.obs_dim])
-        return  utils.gumbel_softmax_st(
-            logits,
-            key = noise_key,#hk.next_rng_key(),
-            tau = self.gumbel_temp, # TODO: pass as param
-        )
+        return net(obs[:self.obs_dim])
 
 class CriticNetwork(hk.Module):
     def __init__(self, obs_dims, hidden_dim_width):
@@ -39,7 +32,7 @@ class CriticNetwork(hk.Module):
 
     def __call__(self, all_obs, *acts) -> jnp.DeviceArray:
         net = hk.Sequential(layers=[
-            hk.Linear(self.hidden_dim_width), # TODO: w_init = ? 
+            hk.Linear(self.hidden_dim_width),
             jnn.relu,
             hk.Linear(self.hidden_dim_width),
             jnn.relu,

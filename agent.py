@@ -11,6 +11,7 @@ import optax
 import einops
 from functools import partial
 from networks import ActorNetwork, CriticNetwork
+from utils import gumbel_softmax_st
 
 class Agent:
     def __init__(self,
@@ -31,20 +32,20 @@ class Agent:
         self.n_obs = obs_dims[self.agent_idx]
         self.n_acts = act_dims[self.agent_idx]
         self.n_agents = len(obs_dims)
+        self.gumbel_temp = gumbel_temp
         # -----------
         self.rng = rng
 
         # ***** POLICY *****
         self.policy = hk.without_apply_rng(hk.transform(
-            lambda xx, noise_key: ActorNetwork(
+            lambda xx: ActorNetwork(
                 self.n_obs,
                 self.n_acts,
                 hidden_dim_width,
-                gumbel_temp,
-            )(xx, noise_key)
+            )(xx)
         ))
         self.behaviour_policy_params = self.target_policy_params = \
-            self.policy.init(next(self.rng), jnp.ones((self.n_obs,)), next(self.rng))
+            self.policy.init(next(self.rng), jnp.ones((self.n_obs,)))
         # ***** ****** *****
 
         # ***** CRITIC *****
@@ -73,11 +74,15 @@ class Agent:
 
     @partial(jit, static_argnums=(0,))
     def act_behaviour(self, obs, key):
-        return self.policy.apply(self.behaviour_policy_params, obs, key)
+        policy_output = self.policy.apply(self.behaviour_policy_params, obs)
+        gs_output = gumbel_softmax_st(policy_output, key=key, temperature=self.gumbel_temp)
+        return jnp.argmax(gs_output)
 
     @partial(jit, static_argnums=(0,))
     def act_target(self, obs, key):
-        return self.policy.apply(self.target_policy_params, obs, key)
+        policy_output = self.policy.apply(self.target_policy_params, obs)
+        gs_output = gumbel_softmax_st(policy_output, key=key, temperature=self.gumbel_temp)
+        return jnp.argmax(gs_output)
 
     def update_critic(self, all_obs, all_nobs, target_actions_per_agent, sampled_actions_per_agent, rewards, dones, gamma):
 
@@ -129,11 +134,11 @@ class Agent:
         ):
             _sampled_actions_per_agent = deepcopy(sampled_actions_per_agent) # TODO - can we avoid this?? :(
             
+            policy_outputs = vmap(self.policy.apply, in_axes=(None,0))(behaviour_policy_params, agent_obs)
             keys = jrand.split(next(self.rng), num=agent_obs.shape[0]) # TODO: Temp fix, hopefully
+            gs_outputs = vmap(gumbel_softmax_st, in_axes=(0,0,None))(policy_outputs, keys, self.gumbel_temp)
             
-            policy_actions = vmap(self.policy.apply, in_axes=(None,0,0))(behaviour_policy_params, agent_obs, keys)
-            
-            _sampled_actions_per_agent[self.agent_idx] = policy_actions
+            _sampled_actions_per_agent[self.agent_idx] = gs_outputs
             
             sampled_actions = jnp.concatenate(_sampled_actions_per_agent, axis=1)
 
