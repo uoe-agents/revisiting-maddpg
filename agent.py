@@ -44,14 +44,21 @@ class Agent:
                 hidden_dim_width,
             )(xx)
         ))
-        self.behaviour_policy_params = self.target_policy_params = \
+        self.behaviour_policy_params = \
+            self.policy.init(next(self.rng), jnp.ones((self.n_obs,)))
+        self.target_policy_params = \
             self.policy.init(next(self.rng), jnp.ones((self.n_obs,)))
         # ***** ****** *****
 
         # ***** CRITIC *****
         self.critic = hk.without_apply_rng(hk.transform(lambda obs, acts : CriticNetwork(obs_dims, hidden_dim_width)(obs, acts)))
-        self.behaviour_critic_params = self.target_critic_params = \
+        self.behaviour_critic_params = \
             self.critic.init(
+                next(self.rng),
+                jnp.ones((sum(obs_dims),)),
+                jnp.ones((sum(act_dims),)),
+            )
+        self.target_critic_params = self.critic.init(
                 next(self.rng),
                 jnp.ones((sum(obs_dims),)),
                 jnp.ones((sum(act_dims),)),
