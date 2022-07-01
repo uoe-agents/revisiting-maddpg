@@ -2,7 +2,6 @@ import argparse
 from tqdm import tqdm
 from buffer import ReplayBuffer
 import numpy as np
-from agent import Agent
 from env_wrapper import create_env
 from maddpg import MADDPG
 import wandb

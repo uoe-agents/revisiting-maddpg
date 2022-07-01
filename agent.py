@@ -1,12 +1,9 @@
 from typing import List
-from copy import copy, deepcopy
-import numpy as np
+from copy import deepcopy
 import torch
 from torch import Tensor
 import torch.nn.functional as F
 from torch.optim import Adam
-import einops
-from functools import partial
 from networks import ActorNetwork, CriticNetwork
 from utils import gumbel_softmax_st
 

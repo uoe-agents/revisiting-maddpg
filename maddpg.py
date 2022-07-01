@@ -2,10 +2,7 @@ import numpy as np
 import torch
 from agent import Agent
 from typing import List
-import einops
 import torch.nn.functional as F
-import utils
-from networks import ActorNetwork, CriticNetwork
 
 class MADDPG:
     def __init__(self, env, critic_lr, actor_lr, gradient_clip, hidden_dim_width, gamma, gumbel_temp):
