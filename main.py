@@ -1,4 +1,5 @@
 import argparse
+import torch
 from tqdm import tqdm
 from buffer import ReplayBuffer
 import numpy as np
@@ -123,15 +124,20 @@ if __name__ == "__main__":
     parser.add_argument("--policy_regulariser", default=0.001, type=float)
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--disable_training", action="store_true")
+    parser.add_argument("--wandb_project_name", default="maddpg-sink-project", type=str)
     parser.add_argument("--disable_wandb", action="store_true")
 
     config = parser.parse_args()
 
     wandb.init(
-        project="maddpg-pytorch-first-tests", # TODO: parse as argument??
+        project=config.wandb_project_name,
         entity="callumtilbury",
         mode="disabled" if (config.disable_wandb) else "online"
     )
-    wandb.config = config
+    wandb.config.update(config)
+
+    # Set random seeds (TODO: Should this be done here, or elsewhere?)
+    torch.manual_seed(config.seed)
+    np.random.seed(config.seed)
 
     train(config)
