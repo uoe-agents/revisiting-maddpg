@@ -53,7 +53,6 @@ def train(config: argparse.Namespace, rng):
         capacity=10e6,
         obs_dims=observation_dims, # TODO: change format of the replay buffer input??
         batch_size=config.batch_size,
-        rng=rng,
     )
 
     maddpg = MADDPG(

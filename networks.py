@@ -22,12 +22,12 @@ class ActorNetwork(hk.Module):
         return net(obs[:self.obs_dim])
 
 class CriticNetwork(hk.Module):
-    def __init__(self, obs_dims, hidden_dim_width):
+    def __init__(self, hidden_dim_width):
         super(CriticNetwork, self).__init__()
-        max_obs_dim = max(obs_dims)
-        self.obs_mask = jnp.concatenate([
-            jnp.arange(ii*max_obs_dim , ii*max_obs_dim + obs_dims[ii]) for ii in range(len(obs_dims))
-        ])
+        # max_obs_dim = max(obs_dims)
+        # self.obs_mask = jnp.concatenate([
+        #     jnp.arange(ii*max_obs_dim , ii*max_obs_dim + obs_dims[ii]) for ii in range(len(obs_dims))
+        # ])
         self.hidden_dim_width = hidden_dim_width
 
     def __call__(self, all_obs, *acts) -> jnp.DeviceArray:
@@ -38,5 +38,5 @@ class CriticNetwork(hk.Module):
             jnn.relu,
             hk.Linear(1),
         ])
-        critic_input = jnp.concatenate((all_obs[self.obs_mask], *acts))
+        critic_input = jnp.concatenate((all_obs, *acts))
         return net(critic_input)

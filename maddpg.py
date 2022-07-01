@@ -34,28 +34,29 @@ class MADDPG:
         ]
 
     def acts(self, obs: List):
-        return [self.agents[ii].act_behaviour(obs[ii], next(self.rng)) for ii in range(self.n_agents)]
+        actions = [self.agents[ii].act_behaviour(obs[ii], next(self.rng)) for ii in range(self.n_agents)]
+        return actions
 
     def update(self, sample):
-        all_obs = einops.rearrange(sample['obs'], 'batch agent obs -> batch (agent obs)')
-        all_nobs = einops.rearrange(sample['nobs'], 'batch agent nobs -> batch (agent nobs)')
+        batched_obs = jnp.concatenate(sample['obs'], axis=1)
+        batched_nobs = jnp.concatenate(sample['nobs'], axis=1)
         
         # ********
         # TODO: This is all a bit cumbersome--could be cleaner?
 
-        keys = jrand.split(next(self.rng), num=all_obs.shape[0])
-        target_actions = einops.rearrange([  # OBS or NOBS?!
-            vmap(self.agents[ii].act_target, in_axes=(0,0))(sample['nobs'][:,ii,:], keys)
+        keys = jrand.split(next(self.rng), num=batched_obs.shape[0])
+        target_actions = [
+            vmap(self.agents[ii].act_target, in_axes=(0,0))(sample['nobs'][ii], keys)
             for ii in range(self.n_agents)
-        ], 'b a -> a b')
+        ]
 
         target_actions_one_hot = [
-            jnn.one_hot(target_actions[:,ii], num_classes=self.agents[ii].n_acts)
+            jnn.one_hot(target_actions[ii], num_classes=self.agents[ii].n_acts)
             for ii in range(self.n_agents)
         ] # agent batch actions
 
         sampled_actions_one_hot = [
-            jnn.one_hot(sample['acts'][:,ii], num_classes=self.agents[ii].n_acts)
+            jnn.one_hot(sample['acts'][ii], num_classes=self.agents[ii].n_acts)
             for ii in range(self.n_agents)
         ] # agent batch actions
 
@@ -63,18 +64,18 @@ class MADDPG:
 
         for ii, agent in enumerate(self.agents):
             agent.update_critic(
-                all_obs=all_obs,
-                all_nobs=all_nobs,
+                all_obs=batched_obs,
+                all_nobs=batched_nobs,
                 target_actions_per_agent=target_actions_one_hot,
                 sampled_actions_per_agent=sampled_actions_one_hot,
-                rewards=jnp.expand_dims(sample['rwds'][:,ii], axis=1),
-                dones=jnp.expand_dims(sample['dones'][:,ii], axis=1),
+                rewards=jnp.expand_dims(sample['rwds'][ii], axis=1),
+                dones=jnp.expand_dims(sample['dones'][ii], axis=1),
                 gamma=self.gamma,
             )
 
             agent.update_actor(
-                all_obs=all_obs,
-                agent_obs=sample['obs'][:,ii,:],
+                all_obs=batched_obs,
+                agent_obs=sample['obs'][ii],
                 sampled_actions=sampled_actions_one_hot,
             )
 

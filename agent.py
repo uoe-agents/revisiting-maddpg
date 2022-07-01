@@ -51,7 +51,7 @@ class Agent:
         # ***** ****** *****
 
         # ***** CRITIC *****
-        self.critic = hk.without_apply_rng(hk.transform(lambda obs, acts : CriticNetwork(obs_dims, hidden_dim_width)(obs, acts)))
+        self.critic = hk.without_apply_rng(hk.transform(lambda obs, acts : CriticNetwork(hidden_dim_width)(obs, acts)))
         self.behaviour_critic_params = \
             self.critic.init(
                 next(self.rng),
@@ -139,19 +139,18 @@ class Agent:
             agent_obs,
             sampled_actions_per_agent,
         ):
-            _sampled_actions_per_agent = deepcopy(sampled_actions_per_agent) # TODO - can we avoid this?? :(
             
             policy_outputs = vmap(self.policy.apply, in_axes=(None,0))(behaviour_policy_params, agent_obs)
             keys = jrand.split(next(self.rng), num=agent_obs.shape[0]) # TODO: Temp fix, hopefully
             gs_outputs = vmap(gumbel_softmax_st, in_axes=(0,0,None))(policy_outputs, keys, self.gumbel_temp)
             
+            _sampled_actions_per_agent = deepcopy(sampled_actions_per_agent) # TODO - can we avoid this?? :(
             _sampled_actions_per_agent[self.agent_idx] = gs_outputs
             
-            sampled_actions = jnp.concatenate(_sampled_actions_per_agent, axis=1)
-
-            Q_vals = self.batched_critic_apply(behaviour_critic_params, all_obs, sampled_actions)
-            
-            return -jnp.mean(Q_vals) # TODO: add policy regulariser
+            return -jnp.mean(
+                self.batched_critic_apply(behaviour_critic_params,
+                    all_obs, *_sampled_actions_per_agent)
+            ) # TODO: add policy regulariser
     
         actor_grads = _actor_loss_fn(
             self.behaviour_policy_params,
