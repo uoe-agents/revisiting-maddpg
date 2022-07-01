@@ -20,7 +20,7 @@ kiwisolver==1.4.3
 lbforaging @ git+https://github.com/semitable/lb-foraging@a409b672bf1fab3ba1999156ccfce5ccdb58443b
 matplotlib==3.5.2
 matplotlib-inline==0.1.3
--e git+ssh://git@github.com/semitable/multiagent-particle-envs.git@2cef12f72a9192a819ef289646526801c39fb909#egg=mpe
+-e git+https://github.com/semitable/multiagent-particle-envs.git@2cef12f72a9192a819ef289646526801c39fb909#egg=mpe
 networkx==2.8.4
 numpy==1.23.0
 numpy-stl==2.17.1
