@@ -1,4 +1,4 @@
-import gym, rware, lbforaging, matrixgames
+import gym, rware, lbforaging
 from make_env import make_env
 
 def create_env(env_string):
