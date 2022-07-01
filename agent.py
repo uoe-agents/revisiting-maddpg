@@ -147,9 +147,10 @@ class Agent:
             _sampled_actions_per_agent = deepcopy(sampled_actions_per_agent) # TODO - can we avoid this?? :(
             _sampled_actions_per_agent[self.agent_idx] = gs_outputs
             
+            sampled_actions = jnp.concatenate(_sampled_actions_per_agent, axis=1)
+            
             return -jnp.mean(
-                self.batched_critic_apply(behaviour_critic_params,
-                    all_obs, *_sampled_actions_per_agent)
+                self.batched_critic_apply(behaviour_critic_params, all_obs, sampled_actions)
             ) # TODO: add policy regulariser
     
         actor_grads = _actor_loss_fn(
