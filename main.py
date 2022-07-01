@@ -24,7 +24,7 @@ def play_episode(
         if (render): env.render()
 
         acts = action_fn(obs)#maddpg.acts(obs)
-        nobs, rwds, dones, _ = env.step(acts)
+        nobs, rwds, dones, _ = env.step(np.array(acts))
 
         steps += 1
         if (steps >= max_timesteps_per_episode):
