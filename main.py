@@ -58,6 +58,7 @@ def train(config: argparse.Namespace):
         hidden_dim_width=config.hidden_dim_width,
         gamma=config.gamma,
         gumbel_temp=config.gumbel_temp,
+        policy_regulariser=config.policy_regulariser,
     )
 
     # Warm up:
@@ -119,6 +120,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval_freq", default=100, type=int)
     parser.add_argument("--eval_iterations", default=100, type=int)
     parser.add_argument("--gumbel_temp", default=1.0, type=float)
+    parser.add_argument("--policy_regulariser", default=0.001, type=float)
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--disable_training", action="store_true")
     parser.add_argument("--disable_wandb", action="store_true")

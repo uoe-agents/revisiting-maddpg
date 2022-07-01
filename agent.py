@@ -16,7 +16,8 @@ class Agent:
         critic_lr,
         actor_lr,
         gradient_clip,
-        gumbel_temp, # TODO: Pass as param
+        gumbel_temp,
+        policy_regulariser,
         soft_update_size=0.01,  # TODO: Pass as param
         # more TODO
     ):
@@ -27,6 +28,7 @@ class Agent:
         self.n_agents = len(obs_dims)
         self.gradient_clip = gradient_clip
         self.gumbel_temp = gumbel_temp
+        self.policy_regulariser = policy_regulariser
         # -----------
 
         # ***** POLICY *****
@@ -77,6 +79,7 @@ class Agent:
         _sampled_actions[self.agent_idx] = gs_outputs
 
         loss = - self.critic(torch.concat((all_obs, *_sampled_actions), axis=1)).mean()
+        loss += (policy_outputs ** 2).mean() * self.policy_regulariser
 
         self.optim_actor.zero_grad()
         loss.backward()
