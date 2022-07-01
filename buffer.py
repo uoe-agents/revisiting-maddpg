@@ -1,5 +1,4 @@
 import numpy as np
-import jax.numpy as jnp
 from collections import Counter
 from torch import Tensor
 
@@ -18,21 +17,21 @@ class ReplayBuffer:
         self.memory_obs = []
         self.memory_nobs = []
         for ii in range(self.n_agents):
-            self.memory_obs.append(np.zeros((self.capacity, obs_dims[ii])))
-            self.memory_nobs.append(np.zeros((self.capacity, obs_dims[ii]))) 
-        self.memory_acts = np.zeros((self.n_agents, self.capacity))
-        self.memory_rwds = np.zeros((self.n_agents, self.capacity))
-        self.memory_dones = np.zeros((self.n_agents, self.capacity))
+            self.memory_obs.append( Tensor(self.capacity, obs_dims[ii]) )
+            self.memory_nobs.append( Tensor(self.capacity, obs_dims[ii]) )
+        self.memory_acts = Tensor(self.n_agents, self.capacity)
+        self.memory_rwds = Tensor(self.n_agents, self.capacity)
+        self.memory_dones = Tensor(self.n_agents, self.capacity)
 
     def store(self, obs, acts, rwds, nobs, dones):
         store_index = self.entries % self.capacity
 
         for ii in range(self.n_agents):
-            self.memory_obs[ii][store_index] = obs[ii]
-            self.memory_nobs[ii][store_index] = nobs[ii]
-        self.memory_acts[:,store_index] = acts
-        self.memory_rwds[:,store_index] = rwds
-        self.memory_dones[:,store_index] = dones
+            self.memory_obs[ii][store_index] = Tensor(obs[ii])
+            self.memory_nobs[ii][store_index] = Tensor(nobs[ii])
+        self.memory_acts[:,store_index] = Tensor(acts)
+        self.memory_rwds[:,store_index] = Tensor(rwds)
+        self.memory_dones[:,store_index] = Tensor(dones)
         
         self.entries += 1
 
