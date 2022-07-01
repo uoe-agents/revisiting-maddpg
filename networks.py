@@ -5,7 +5,6 @@ class ActorNetwork(nn.Module):
     def __init__(self, obs_dim, hidden_dim_width, n_actions):
         super().__init__()
         self.obs_dim = obs_dim
-
         self.layers = nn.Sequential(*[
             nn.Linear(obs_dim, hidden_dim_width), nn.ReLU(),
             nn.Linear(hidden_dim_width, hidden_dim_width), nn.ReLU(),
