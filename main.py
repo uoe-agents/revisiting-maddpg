@@ -88,7 +88,7 @@ def train(config: argparse.Namespace):
                 sample = buffer.sample()
                 maddpg.update(sample)
 
-            if (config.eval_freq != 0 and (eval_count * config.eval_freq) >= elapsed_steps):
+            if (config.eval_freq != 0 and (eval_count * config.eval_freq) <= elapsed_steps):
                 eval_count += 1
 
                 eval_returns = []
