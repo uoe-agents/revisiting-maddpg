@@ -1,6 +1,6 @@
 import argparse
 import torch
-from tqdm import tqdm
+from tqdm import tqdm; BAR_FORMAT = "{l_bar}{bar:50}{r_bar}{bar:-10b}"
 from buffer import ReplayBuffer
 import numpy as np
 from env_wrapper import create_env
@@ -10,25 +10,25 @@ import wandb
 def play_episode(
     env,
     buffer : ReplayBuffer,
-    max_timesteps_per_episode,
+    max_episode_length,
     action_fn,
     render=False,
 ):
     obs = env.reset()
     dones = [False] * env.n_agents
 
-    steps = 0
+    episode_steps = 0
     episode_return = 0
 
-    while not any(dones):# and (steps < max_timesteps_per_episode):
+    while not any(dones):
         if (render): env.render()
 
         acts = action_fn(obs)#maddpg.acts(obs)
         nobs, rwds, dones, _ = env.step(np.array(acts))
 
-        steps += 1
-        if (steps >= max_timesteps_per_episode):
-            dones = [True] * env.n_agents
+        episode_steps += 1
+        if (episode_steps >= max_episode_length): # Some envs don't have done flags,
+            dones = [True] * env.n_agents #  so manually set them here
 
         buffer.store(
             obs=obs,
@@ -40,7 +40,7 @@ def play_episode(
         episode_return += sum(rwds)
         obs = nobs
 
-    return episode_return
+    return episode_return, episode_steps
 
 def train(config: argparse.Namespace):
     env = create_env(config.env)
@@ -63,23 +63,23 @@ def train(config: argparse.Namespace):
     )
 
     # Warm up:
-    for _ in tqdm(range(config.warmup_episodes)):
-        play_episode(
+    for _ in tqdm(range(config.warmup_episodes), bar_format=BAR_FORMAT, postfix="Warming up..."):
+        _, _ = play_episode(
             env,
             buffer,
-            max_timesteps_per_episode=config.episode_length,
+            max_episode_length=config.max_episode_length,
             action_fn=(lambda _ : env.action_space.sample()),
         )
 
-    print(f"Warmed up with {buffer.entries} entries")
-
-    with tqdm(range(config.n_episodes),
-        bar_format="{l_bar}{bar:30}{r_bar}{bar:-10b}") as pbar:
-        for epi_i in pbar:
-            _ = play_episode(
+    eval_means = []
+    with tqdm(total=config.total_steps, bar_format=BAR_FORMAT) as pbar:
+        elapsed_steps = 0
+        eval_count = 0
+        while elapsed_steps < config.total_steps:
+            _, episode_steps = play_episode(
                 env,
                 buffer,
-                max_timesteps_per_episode=config.episode_length,
+                max_episode_length=config.max_episode_length,
                 action_fn=maddpg.acts,
                 render=False,
             )
@@ -88,37 +88,45 @@ def train(config: argparse.Namespace):
                 sample = buffer.sample()
                 maddpg.update(sample)
 
-            if (config.eval_freq != 0 and epi_i % config.eval_freq == 0):
+            if (config.eval_freq != 0 and (eval_count * config.eval_freq) >= elapsed_steps):
+                eval_count += 1
+
                 eval_returns = []
                 for _ in range(config.eval_iterations):
-                    eval_returns.append(play_episode(
+                    eval_return, _ = play_episode(
                         env,
                         buffer,
-                        max_timesteps_per_episode=config.episode_length,
+                        max_episode_length=config.max_episode_length,
                         action_fn=maddpg.acts,
                         render=config.render,
-                    ))
-                pbar.set_postfix(eval_return=f"{np.round(np.mean(eval_returns), 2)} ({np.round(np.std(eval_returns),2)})", refresh=True)
-                wandb.log({"Ep. Return (Eval)": np.mean(eval_returns)})
+                    )
+                    eval_returns.append(eval_return)
+                
+                eval_means.append( np.mean(eval_returns) )
+                pbar.set_postfix(eval_return=f"{np.round(np.mean(eval_returns), 2)}", refresh=True)
+                wandb.log({"Ep. Return (Eval)": np.mean(eval_returns)}) # TODO: fix wandb logging
+
+            elapsed_steps += episode_steps
+            pbar.update(episode_steps)
 
     env.close()
+    return eval_means
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", default="simple_speaker_listener")
-    parser.add_argument("--seed", default=1, type=int)
+    parser.add_argument("--iterations", default=5, type=int)
+    parser.add_argument("--env", required=True)
     parser.add_argument("--n_episodes", default=25000, type=int)
     parser.add_argument("--warmup_episodes", default=400, type=int)
-    #parser.add_argument("--timesteps", default=25000, type=int) # TODO?
-    parser.add_argument("--episode_length", default=25, type=int)
-    #parser.add_argument("--steps_per_update", default=100, type=int) # TODO: Bring back?
+    parser.add_argument("--total_steps", default=2_000_000, type=int)
+    parser.add_argument("--max_episode_length", default=25, type=int)
     parser.add_argument("--batch_size", default=512, type=int)
     parser.add_argument("--hidden_dim_width", default=64, type=int) # TODO: Pass this as a tuple and unpack into n layers in network creation?
     parser.add_argument("--critic_lr", default=3e-4, type=float)
     parser.add_argument("--actor_lr", default=3e-4, type=float)
     parser.add_argument("--gradient_clip", default=1.0, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
-    parser.add_argument("--eval_freq", default=100, type=int)
+    parser.add_argument("--eval_freq", default=50_000, type=int)
     parser.add_argument("--eval_iterations", default=100, type=int)
     parser.add_argument("--gumbel_temp", default=1.0, type=float)
     parser.add_argument("--policy_regulariser", default=0.001, type=float)
@@ -129,15 +137,23 @@ if __name__ == "__main__":
 
     config = parser.parse_args()
 
-    wandb.init(
-        project=config.wandb_project_name,
-        entity="callumtilbury",
-        mode="disabled" if (config.disable_wandb) else "online"
-    )
-    wandb.config.update(config)
+    def set_global_seeds(seed : int):
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
-    # Set random seeds (TODO: Should this be done here, or elsewhere?)
-    torch.manual_seed(config.seed)
-    np.random.seed(config.seed)
+    for ss in range(config.iterations):
+        run = wandb.init(
+            project=config.wandb_project_name,
+            entity="callumtilbury",
+            mode="disabled" if (config.disable_wandb) else "online",
+            group=f"{config.env}",
+            reinit=True,
+        )
+        wandb.config.update(config)
 
-    train(config)
+        print(f"Running with seed {ss}")
+        set_global_seeds(ss)
+        results = train(config)
+
+if __name__ == "__main__":
+    main()
