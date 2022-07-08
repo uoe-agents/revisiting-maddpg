@@ -34,11 +34,13 @@ class Agent:
         # ***** POLICY *****
         self.policy = ActorNetwork(self.n_obs, hidden_dim_width, self.n_acts)
         self.target_policy = ActorNetwork(self.n_obs, hidden_dim_width, self.n_acts)        
+        self.target_policy.hard_update(self.policy)
         # ***** ****** *****
 
         # ***** CRITIC *****
         self.critic = CriticNetwork(obs_dims, act_dims, hidden_dim_width)        
         self.target_critic = CriticNetwork(obs_dims, act_dims, hidden_dim_width)        
+        self.target_critic.hard_update(self.critic)
         # ***** ****** *****
 
         # OPTIMISERS
