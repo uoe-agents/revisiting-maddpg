@@ -4,6 +4,7 @@ from tqdm import tqdm; BAR_FORMAT = "{l_bar}{bar:50}{r_bar}{bar:-10b}"
 from buffer import ReplayBuffer
 import numpy as np
 from env_wrapper import create_env
+from gym import wrappers
 from maddpg import MADDPG
 import wandb
 
@@ -13,6 +14,7 @@ def play_episode(
     max_episode_length,
     action_fn,
     render=False,
+    reward_per_agent=True,
 ):
     obs = env.reset()
     dones = [False] * env.n_agents
@@ -37,13 +39,19 @@ def play_episode(
             nobs=nobs,
             dones=dones,
         )
-        episode_return += sum(rwds)
+        episode_return += rwds[0] if reward_per_agent else sum(rwds)
         obs = nobs
 
     return episode_return, episode_steps
 
 def train(config: argparse.Namespace):
     env = create_env(config.env)
+    video_env = wrappers.RecordVideo(env,
+        f"./videos/{config.wandb_project_name}/",
+        video_length=config.max_episode_length,
+        name_prefix=f"{config.env}",
+        episode_trigger=lambda _ : True,
+    )
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
     buffer = ReplayBuffer(
         capacity=10e6,
@@ -98,7 +106,6 @@ def train(config: argparse.Namespace):
                         buffer,
                         max_episode_length=config.max_episode_length,
                         action_fn=maddpg.acts,
-                        render=config.render,
                     )
                     eval_returns.append(eval_return)
                 
@@ -106,16 +113,25 @@ def train(config: argparse.Namespace):
                 pbar.set_postfix(eval_return=f"{np.round(np.mean(eval_returns), 2)}", refresh=True)
                 wandb.log({"Ep. Return (Eval)": np.mean(eval_returns)}) # TODO: fix wandb logging
 
+                if config.render:
+                    play_episode(
+                        env,
+                        buffer,
+                        max_episode_length=config.max_episode_length,
+                        action_fn=maddpg.acts,
+                        render=True,
+                    )
+
             elapsed_steps += episode_steps
             pbar.update(episode_steps)
 
     env.close()
     return eval_means
 
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--iterations", default=5, type=int)
-    parser.add_argument("--env", required=True)
+    parser.add_argument("--seed", required=True, type=int)
+    parser.add_argument("--env", required=True, type=str)
     parser.add_argument("--n_episodes", default=25000, type=int)
     parser.add_argument("--warmup_episodes", default=400, type=int)
     parser.add_argument("--total_steps", default=2_000_000, type=int)
@@ -137,23 +153,18 @@ def main():
 
     config = parser.parse_args()
 
-    def set_global_seeds(seed : int):
-        torch.manual_seed(seed)
-        np.random.seed(seed)
+    torch.manual_seed(config.seed)
+    np.random.seed(config.seed)
 
-    for ss in range(config.iterations):
-        run = wandb.init(
-            project=config.wandb_project_name,
-            entity="callumtilbury",
-            mode="disabled" if (config.disable_wandb) else "online",
-            group=f"{config.env}",
-            reinit=True,
-        )
-        wandb.config.update(config)
+    run = wandb.init(
+        project=config.wandb_project_name,
+        entity="callumtilbury",
+        mode="disabled" if (config.disable_wandb) else "online",
+        #group=f"{config.env}",
+        #reinit=True,
+    )
+    wandb.config.update(config)
 
-        print(f"Running with seed {ss}")
-        set_global_seeds(ss)
-        results = train(config)
-
-if __name__ == "__main__":
-    main()
+    eval_means = train(config)
+    print(f"Max Return: {np.max(eval_means)}")
+    print(f"Average Return: {np.mean(eval_means)}")
