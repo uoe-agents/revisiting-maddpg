@@ -26,6 +26,7 @@ register(
         "max_food": 3,
         "sight": 2,
         "max_episode_steps": 50,
+        "force_coop": False,
     },
 )
 
