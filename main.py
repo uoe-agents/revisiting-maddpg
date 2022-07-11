@@ -133,7 +133,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", required=True, type=str)
     parser.add_argument("--n_seeds", default=5, type=int)
-    parser.add_argument("--n_episodes", default=25000, type=int)
     parser.add_argument("--warmup_episodes", default=400, type=int)
     parser.add_argument("--total_steps", default=2_000_000, type=int)
     parser.add_argument("--max_episode_length", default=25, type=int)
