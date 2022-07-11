@@ -1,4 +1,5 @@
 import argparse
+import einops
 import torch
 from tqdm import tqdm; BAR_FORMAT = "{l_bar}{bar:50}{r_bar}{bar:-10b}"
 from buffer import ReplayBuffer
@@ -176,3 +177,15 @@ if __name__ == "__main__":
     )[0]
 
     print(f"Max: {max_mean} ± {np.abs(max_mean - max_95perc)}")
+
+    # AVERAGE stat
+    flattened_eval_returns = einops.rearrange(np.array(eval_returns_across_seeds), 'seeds values -> (seeds values)')
+    avg_mean = np.mean(flattened_eval_returns)
+    avg_95perc = st.t.interval(
+        alpha=0.95,
+        df=len(flattened_eval_returns) - 1,
+        loc=avg_mean,
+        scale=st.sem(flattened_eval_returns)
+    )[0]
+
+    print(f"Avg: {avg_mean} ± {np.abs(avg_mean - avg_95perc)}")
