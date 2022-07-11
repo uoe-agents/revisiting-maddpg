@@ -8,6 +8,7 @@ import scipy.stats as st
 from env_wrapper import create_env
 from maddpg import MADDPG
 import wandb
+from datetime import date
 
 def play_episode(
     env,
@@ -45,7 +46,11 @@ def play_episode(
 
     return episode_return, episode_steps
 
-def train(config: argparse.Namespace):
+def train(config: argparse.Namespace, seed : int):
+    # Set seeds
+    torch.manual_seed(ss)
+    np.random.seed(ss)
+
     env = create_env(config.env)
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
     buffer = ReplayBuffer(
@@ -106,7 +111,7 @@ def train(config: argparse.Namespace):
                 
                 eval_returns.append( np.mean(timestep_returns) )
                 pbar.set_postfix(eval_return=f"{np.round(np.mean(timestep_returns), 2)}", refresh=True)
-                wandb.log({"Ep. Return (Eval)": np.mean(timestep_returns)}) # TODO: fix wandb logging
+                wandb.log({f"Return": np.mean(timestep_returns)}, step=elapsed_steps, commit=False)
 
                 if config.render:
                     play_episode(
@@ -148,20 +153,19 @@ if __name__ == "__main__":
 
     config = parser.parse_args()
 
-    run = wandb.init(
-        project=config.wandb_project_name,
-        entity="callumtilbury",
-        mode="disabled" if (config.disable_wandb) else "online",
-        group=f"{config.env}",
-        reinit=True,
-    )
-    wandb.config.update(config)
-
     eval_returns_across_seeds = []
     for ss in range(config.n_seeds):
-        torch.manual_seed(ss)
-        np.random.seed(ss)
-        eval_returns = train(config)
+        run = wandb.init(
+            project=config.wandb_project_name,
+            name=f"{str(date.today())}-{config.env}-{ss}",
+            entity="callumtilbury",
+            group=f"{config.env}",
+            reinit=True,
+            mode="disabled" if (config.disable_wandb) else "online",
+        )
+        wandb.config.update(config)
+
+        eval_returns = train(config, ss)
         eval_returns_across_seeds.append(eval_returns)
 
     # MAX stat
@@ -177,6 +181,8 @@ if __name__ == "__main__":
     )[0]
 
     print(f"Max: {max_mean} ± {np.abs(max_mean - max_95perc)}")
+    wandb.run.summary["Max Return (mean)"] = max_mean
+    wandb.run.summary["Max Return (err)"] = np.abs(max_mean - max_95perc)
 
     # AVERAGE stat
     flattened_eval_returns = einops.rearrange(np.array(eval_returns_across_seeds), 'seeds values -> (seeds values)')
@@ -189,3 +195,5 @@ if __name__ == "__main__":
     )[0]
 
     print(f"Avg: {avg_mean} ± {np.abs(avg_mean - avg_95perc)}")
+    wandb.run.summary["Avg Return (mean)"] = avg_mean
+    wandb.run.summary["Avg Return (err)"] = np.abs(avg_mean - avg_95perc)
