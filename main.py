@@ -3,6 +3,7 @@ import torch
 from tqdm import tqdm; BAR_FORMAT = "{l_bar}{bar:50}{r_bar}{bar:-10b}"
 from buffer import ReplayBuffer
 import numpy as np
+import scipy.stats as st
 from env_wrapper import create_env
 from maddpg import MADDPG
 import wandb
@@ -72,7 +73,7 @@ def train(config: argparse.Namespace):
             action_fn=(lambda _ : env.action_space.sample()),
         )
 
-    eval_means = []
+    eval_returns = []
     with tqdm(total=config.total_steps, bar_format=BAR_FORMAT) as pbar:
         elapsed_steps = 0
         eval_count = 0
@@ -92,19 +93,19 @@ def train(config: argparse.Namespace):
             if (config.eval_freq != 0 and (eval_count * config.eval_freq) <= elapsed_steps):
                 eval_count += 1
 
-                eval_returns = []
+                timestep_returns = []
                 for _ in range(config.eval_iterations):
-                    eval_return, _ = play_episode(
-                        env,
-                        buffer,
-                        max_episode_length=config.max_episode_length,
-                        action_fn=maddpg.acts,
+                    timestep_returns.append(play_episode(
+                            env,
+                            buffer,
+                            max_episode_length=config.max_episode_length,
+                            action_fn=maddpg.acts,
+                        )[0]
                     )
-                    eval_returns.append(eval_return)
                 
-                eval_means.append( np.mean(eval_returns) )
-                pbar.set_postfix(eval_return=f"{np.round(np.mean(eval_returns), 2)}", refresh=True)
-                wandb.log({"Ep. Return (Eval)": np.mean(eval_returns)}) # TODO: fix wandb logging
+                eval_returns.append( np.mean(timestep_returns) )
+                pbar.set_postfix(eval_return=f"{np.round(np.mean(timestep_returns), 2)}", refresh=True)
+                wandb.log({"Ep. Return (Eval)": np.mean(timestep_returns)}) # TODO: fix wandb logging
 
                 if config.render:
                     play_episode(
@@ -119,12 +120,12 @@ def train(config: argparse.Namespace):
             pbar.update(episode_steps)
 
     env.close()
-    return eval_means
+    return eval_returns
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--env", required=True, type=str)
+    parser.add_argument("--n_seeds", default=5, type=int)
     parser.add_argument("--n_episodes", default=25000, type=int)
     parser.add_argument("--warmup_episodes", default=400, type=int)
     parser.add_argument("--total_steps", default=2_000_000, type=int)
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     parser.add_argument("--actor_lr", default=3e-4, type=float)
     parser.add_argument("--gradient_clip", default=1.0, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
-    parser.add_argument("--eval_freq", default=50_000, type=int)
+    parser.add_argument("--eval_freq", default=25_000, type=int)
     parser.add_argument("--eval_iterations", default=100, type=int)
     parser.add_argument("--gumbel_temp", default=1.0, type=float)
     parser.add_argument("--policy_regulariser", default=0.001, type=float)
@@ -146,18 +147,32 @@ if __name__ == "__main__":
 
     config = parser.parse_args()
 
-    torch.manual_seed(config.seed)
-    np.random.seed(config.seed)
-
     run = wandb.init(
         project=config.wandb_project_name,
         entity="callumtilbury",
         mode="disabled" if (config.disable_wandb) else "online",
-        #group=f"{config.env}",
-        #reinit=True,
+        group=f"{config.env}",
+        reinit=True,
     )
     wandb.config.update(config)
 
-    eval_means = train(config)
-    print(f"Max Return: {np.max(eval_means)}")
-    print(f"Average Return: {np.mean(eval_means)}")
+    eval_returns_across_seeds = []
+    for ss in range(config.n_seeds):
+        torch.manual_seed(ss)
+        np.random.seed(ss)
+        eval_returns = train(config)
+        eval_returns_across_seeds.append(eval_returns)
+
+    # MAX stat
+    average_eval_returns_across_seeds = np.mean(eval_returns_across_seeds, axis=0)
+    max_timestep = np.argmax(average_eval_returns_across_seeds)
+    eval_returns_across_seeds_max_timestep = np.array(eval_returns_across_seeds)[:,max_timestep]
+    max_mean = np.mean(eval_returns_across_seeds_max_timestep)
+    max_95perc = st.t.interval(
+        alpha=0.95,
+        df=config.n_seeds - 1,
+        loc=max_mean,
+        scale=st.sem(eval_returns_across_seeds_max_timestep)
+    )[0]
+
+    print(f"Max: {max_mean} ± {np.abs(max_mean - max_95perc)}")
