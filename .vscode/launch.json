@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--disable_wandb", "--warmup_episodes", "50"]
+            "args": ["--disable_wandb", "--warmup_episodes", "50", "--env", "simple_speaker_listener", "--n_seeds", "3", "--total_steps", "10_000", "--eval_freq", "1000", "--eval_iterations", "5"]
         }
     ]
 }
