@@ -4,7 +4,6 @@ from tqdm import tqdm; BAR_FORMAT = "{l_bar}{bar:50}{r_bar}{bar:-10b}"
 from buffer import ReplayBuffer
 import numpy as np
 from env_wrapper import create_env
-from gym import wrappers
 from maddpg import MADDPG
 import wandb
 
@@ -46,12 +45,6 @@ def play_episode(
 
 def train(config: argparse.Namespace):
     env = create_env(config.env)
-    video_env = wrappers.RecordVideo(env,
-        f"./videos/{config.wandb_project_name}/",
-        video_length=config.max_episode_length,
-        name_prefix=f"{config.env}",
-        episode_trigger=lambda _ : True,
-    )
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
     buffer = ReplayBuffer(
         capacity=10e6,
