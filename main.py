@@ -16,7 +16,7 @@ def play_episode(
     max_episode_length,
     action_fn,
     render=False,
-    reward_per_agent=True,
+    reward_per_agent=False,
 ):
     obs = env.reset()
     dones = [False] * env.n_agents
@@ -27,7 +27,7 @@ def play_episode(
     while not any(dones):
         if (render): env.render()
 
-        acts = action_fn(obs)#maddpg.acts(obs)
+        acts = action_fn(obs)
         nobs, rwds, dones, _ = env.step(np.array(acts))
 
         episode_steps += 1
@@ -106,6 +106,7 @@ def train(config: argparse.Namespace, seed : int):
                             buffer,
                             max_episode_length=config.max_episode_length,
                             action_fn=maddpg.acts,
+                            reward_per_agent=config.reward_per_agent,
                         )[0]
                     )
                 
@@ -146,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval_iterations", default=100, type=int)
     parser.add_argument("--gumbel_temp", default=1.0, type=float)
     parser.add_argument("--policy_regulariser", default=0.001, type=float)
+    parser.add_argument("--reward_per_agent", action="store_true")
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--disable_training", action="store_true")
     parser.add_argument("--wandb_project_name", default="maddpg-sink-project", type=str)
