@@ -80,6 +80,7 @@ python main.py \
     --critic_lr 5e-4 \
     --actor_lr 5e-4 \
     --policy_regulariser 0.001 \
+    --total_steps 4_000_000 \
     --wandb_project_name maddpg-baselines \
 
 # RWARE [B]: tiny-4p
@@ -88,6 +89,7 @@ python main.py \
     --critic_lr 5e-4 \
     --actor_lr 5e-4 \
     --policy_regulariser 0.001 \
+    --total_steps 4_000_000 \
     --wandb_project_name maddpg-baselines \
 
 # RWARE [C]: small-4p
@@ -96,4 +98,5 @@ python main.py \
     --critic_lr 5e-4 \
     --actor_lr 5e-4 \
     --policy_regulariser 0.001 \
+    --total_steps 4_000_000 \
     --wandb_project_name maddpg-baselines \
