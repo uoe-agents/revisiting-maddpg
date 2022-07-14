@@ -5,7 +5,6 @@ from torch import Tensor
 import torch.nn.functional as F
 from torch.optim import Adam
 from networks import ActorNetwork, CriticNetwork
-from utils import gumbel_softmax_st
 
 class Agent:
     def __init__(self,
@@ -18,6 +17,7 @@ class Agent:
         gradient_clip,
         gumbel_temp,
         policy_regulariser,
+        gradient_estimator,
         soft_update_size=0.01,  # TODO: Pass as param
         # more TODO
     ):
@@ -29,6 +29,7 @@ class Agent:
         self.gradient_clip = gradient_clip
         self.gumbel_temp = gumbel_temp
         self.policy_regulariser = policy_regulariser
+        self.gradient_estimator = gradient_estimator
         # -----------
 
         # ***** POLICY *****
@@ -49,12 +50,12 @@ class Agent:
 
     def act_behaviour(self, obs):
         policy_output = self.policy(Tensor(obs))
-        gs_output = gumbel_softmax_st(policy_output, temperature=self.gumbel_temp)
+        gs_output = self.gradient_estimator(policy_output)
         return torch.argmax(gs_output, dim=-1)
 
     def act_target(self, obs):
         policy_output = self.policy(Tensor(obs))
-        gs_output = gumbel_softmax_st(policy_output, temperature=self.gumbel_temp)
+        gs_output = self.gradient_estimator(policy_output)
         return torch.argmax(gs_output, dim=-1)
 
     def update_critic(self, all_obs, all_nobs, target_actions_per_agent, sampled_actions_per_agent, rewards, dones, gamma):
@@ -75,7 +76,7 @@ class Agent:
     def update_actor(self, all_obs, agent_obs, sampled_actions):
 
         policy_outputs = self.policy(agent_obs)
-        gs_outputs = gumbel_softmax_st(policy_outputs, self.gumbel_temp)
+        gs_outputs = self.gradient_estimator(policy_outputs)
         
         _sampled_actions = deepcopy(sampled_actions)
         _sampled_actions[self.agent_idx] = gs_outputs

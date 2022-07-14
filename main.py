@@ -1,5 +1,4 @@
 import argparse
-import einops
 import torch
 from tqdm import tqdm; BAR_FORMAT = "{l_bar}{bar:50}{r_bar}{bar:-10b}"
 from buffer import ReplayBuffer
@@ -9,6 +8,7 @@ from env_wrapper import create_env
 from maddpg import MADDPG
 import wandb
 from datetime import date
+import gradient_estimators
 
 def play_episode(
     env,
@@ -46,10 +46,10 @@ def play_episode(
 
     return episode_return, episode_steps
 
-def train(config: argparse.Namespace, seed : int):
+def train(config: argparse.Namespace):
     # Set seeds
-    torch.manual_seed(ss)
-    np.random.seed(ss)
+    torch.manual_seed(config.seed)
+    np.random.seed(config.seed)
 
     env = create_env(config.env)
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
@@ -58,6 +58,15 @@ def train(config: argparse.Namespace, seed : int):
         obs_dims=observation_dims, # TODO: change format of the replay buffer input??
         batch_size=config.batch_size,
     )
+
+    gradient_estimator = ...
+    match config.gradient_estimator:
+        case "stgs":
+            gradient_estimator = gradient_estimators.STGS(config.gumbel_temp)
+        case "grmck":
+            gradient_estimator = gradient_estimators.GRMCK(config.gumbel_temp, config.rao_k)
+        case _:
+            print("Unknown gradient estimator type")
 
     maddpg = MADDPG(
         env=env,
@@ -68,6 +77,7 @@ def train(config: argparse.Namespace, seed : int):
         gamma=config.gamma,
         gumbel_temp=config.gumbel_temp,
         policy_regulariser=config.policy_regulariser,
+        gradient_estimator=gradient_estimator,
     )
 
     # Warm up:
@@ -132,7 +142,7 @@ def train(config: argparse.Namespace, seed : int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", required=True, type=str)
-    parser.add_argument("--n_seeds", default=5, type=int)
+    parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--warmup_episodes", default=400, type=int)
     parser.add_argument("--total_steps", default=2_000_000, type=int)
     parser.add_argument("--max_episode_length", default=25, type=int)
@@ -145,6 +155,11 @@ if __name__ == "__main__":
     parser.add_argument("--eval_freq", default=25_000, type=int)
     parser.add_argument("--eval_iterations", default=100, type=int)
     parser.add_argument("--gumbel_temp", default=1.0, type=float)
+    parser.add_argument("--rao_k", default=1, type=int)
+    parser.add_argument("--gradient_estimator", default="stgs", choices=[
+        "stgs",
+        "grmck",
+    ], type=str)
     parser.add_argument("--policy_regulariser", default=0.001, type=float)
     parser.add_argument("--reward_per_agent", action="store_true")
     parser.add_argument("--render", action="store_true")
@@ -154,47 +169,12 @@ if __name__ == "__main__":
 
     config = parser.parse_args()
 
-    eval_returns_across_seeds = []
-    for ss in range(config.n_seeds):
-        run = wandb.init(
-            project=config.wandb_project_name,
-            name=f"{str(date.today())}-{config.env}-{ss}",
-            entity="callumtilbury",
-            group=f"{config.env}",
-            reinit=True,
-            mode="disabled" if (config.disable_wandb) else "online",
-        )
-        wandb.config.update(config)
+    run = wandb.init(
+        project=config.wandb_project_name,
+        name=f"{str(date.today())}-{config.env}-{config.seed}",
+        entity="callumtilbury",
+        mode="disabled" if (config.disable_wandb) else "online",
+    )
+    wandb.config.update(config)
 
-        eval_returns = train(config, ss)
-        eval_returns_across_seeds.append(eval_returns)
-
-    # MAX stat
-    average_eval_returns_across_seeds = np.mean(eval_returns_across_seeds, axis=0)
-    max_timestep = np.argmax(average_eval_returns_across_seeds)
-    eval_returns_across_seeds_max_timestep = np.array(eval_returns_across_seeds)[:,max_timestep]
-    max_mean = np.mean(eval_returns_across_seeds_max_timestep)
-    max_95perc = st.t.interval(
-        alpha=0.95,
-        df=config.n_seeds - 1,
-        loc=max_mean,
-        scale=st.sem(eval_returns_across_seeds_max_timestep)
-    )[0]
-
-    print(f"Max: {max_mean} ± {np.abs(max_mean - max_95perc)}")
-    wandb.run.summary["Max Return (mean)"] = max_mean
-    wandb.run.summary["Max Return (err)"] = np.abs(max_mean - max_95perc)
-
-    # AVERAGE stat
-    flattened_eval_returns = einops.rearrange(np.array(eval_returns_across_seeds), 'seeds values -> (seeds values)')
-    avg_mean = np.mean(flattened_eval_returns)
-    avg_95perc = st.t.interval(
-        alpha=0.95,
-        df=len(flattened_eval_returns) - 1,
-        loc=avg_mean,
-        scale=st.sem(flattened_eval_returns)
-    )[0]
-
-    print(f"Avg: {avg_mean} ± {np.abs(avg_mean - avg_95perc)}")
-    wandb.run.summary["Avg Return (mean)"] = avg_mean
-    wandb.run.summary["Avg Return (err)"] = np.abs(avg_mean - avg_95perc)
+    _ = train(config)

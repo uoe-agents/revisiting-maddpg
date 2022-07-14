@@ -5,7 +5,7 @@ from typing import List
 import torch.nn.functional as F
 
 class MADDPG:
-    def __init__(self, env, critic_lr, actor_lr, gradient_clip, hidden_dim_width, gamma, gumbel_temp, policy_regulariser):
+    def __init__(self, env, critic_lr, actor_lr, gradient_clip, hidden_dim_width, gamma, gumbel_temp, policy_regulariser, gradient_estimator):
         self.n_agents = env.n_agents
         self.gamma = gamma
         obs_dims = [obs.shape[0] for obs in env.observation_space]
@@ -22,6 +22,7 @@ class MADDPG:
                 gradient_clip=gradient_clip,
                 gumbel_temp=gumbel_temp,
                 policy_regulariser=policy_regulariser,
+                gradient_estimator=gradient_estimator,
             )
             for ii in range(self.n_agents)
         ]
