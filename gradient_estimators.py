@@ -4,9 +4,10 @@ def replace_gradient(value, surrogate):
     """Returns `value` but backpropagates gradients through `surrogate`."""
     return surrogate + (value - surrogate).detach()
 
-# class GradientEstimator: # TODO: Make a parent class?
+class GradientEstimator:
+    pass
 
-class STGS:
+class STGS(GradientEstimator):
     """
         Straight-Through Gumbel Softmax estimator
     """
@@ -25,7 +26,7 @@ class STGS:
         return replace_gradient(value=y_hard, surrogate=y_soft)
 
 
-class GRMCK:
+class GRMCK(GradientEstimator):
     """
         Gumbel-Rao Monte-Carlo estimator
     """

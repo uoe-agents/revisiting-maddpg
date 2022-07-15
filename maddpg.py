@@ -4,8 +4,21 @@ from agent import Agent
 from typing import List
 import torch.nn.functional as F
 
+from gradient_estimators import GradientEstimator
+
 class MADDPG:
-    def __init__(self, env, critic_lr, actor_lr, gradient_clip, hidden_dim_width, gamma, gumbel_temp, policy_regulariser, gradient_estimator):
+    def __init__(
+        self,
+        env,
+        critic_lr : float,
+        actor_lr : float,
+        gradient_clip : float,
+        hidden_dim_width : int,
+        gamma : float,
+        gumbel_temp : float,
+        policy_regulariser : float,
+        gradient_estimator : GradientEstimator,
+    ):
         self.n_agents = env.n_agents
         self.gamma = gamma
         obs_dims = [obs.shape[0] for obs in env.observation_space]
@@ -73,7 +86,6 @@ class MADDPG:
                 sampled_actions=sampled_actions_one_hot,
             )
 
-        # TODO: Check -> Does this need to be done @ end of individual agent updates??
         for agent in self.agents:
             agent.soft_update()
 
