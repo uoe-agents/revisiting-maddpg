@@ -32,9 +32,7 @@ class GRMCK:
     def __init__(self, temperature, kk):
         self.temperature = temperature
         self.kk = kk
-    
-    @torch.no_grad()
-    @staticmethod
+
     def _conditional_gumbel(self, logits, DD):
         """Outputs k samples of Q = StandardGumbel(), such that argmax(logits
         + Q) is given by D (one hot vector)."""
