@@ -29,6 +29,8 @@ class STGS(GradientEstimator):
 class GRMCK(GradientEstimator):
     """
         Gumbel-Rao Monte-Carlo estimator
+
+        Credit: https://github.com/nshepperd/gumbel-rao-pytorch/blob/master/gumbel_rao.py
     """
     def __init__(self, temperature, kk):
         self.temperature = temperature
