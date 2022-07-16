@@ -4,7 +4,7 @@ def replace_gradient(value, surrogate):
     """Returns `value` but backpropagates gradients through `surrogate`."""
     return surrogate + (value - surrogate).detach()
 
-class GradientEstimator:
+class GradientEstimator: # TODO : Actually leverage parent class
     pass
 
 class STGS(GradientEstimator):
@@ -57,3 +57,33 @@ class GRMCK(GradientEstimator):
         adjusted = logits + self._conditional_gumbel(logits, DD)
         surrogate = torch.nn.functional.softmax(adjusted/self.temperature, dim=-1).mean(dim=0)
         return replace_gradient(DD, surrogate)
+
+class GST(GradientEstimator):
+    """
+        Gapped Straight-Through Estimator
+
+        Credit: https://github.com/chijames/GST/blob/267ab3aa202d7a0cfd5b5861bd3dcad87faefd9f/model/basic.py
+    """
+    def __init__(self, temperature, gap):
+        self.temperature = temperature
+        self.gap = gap
+
+    def __call__(self, logits):
+        logits_cpy = logits.detach()
+        probs = torch.nn.functional.softmax(logits_cpy, dim=-1)
+        mm = torch.distributions.one_hot_categorical.OneHotCategorical(probs = probs)  
+        action = mm.sample() 
+        argmax = probs.argmax(dim=-1, keepdim=True)
+        
+        action_bool = action.bool()
+        max_logits = torch.gather(logits_cpy, -1, argmax)
+        move = (max_logits - logits_cpy)*action
+
+        move2 = ( logits_cpy + (-max_logits + self.gap) ).clamp(min=0.0)
+        move2[action_bool] = 0.0 # Equivalent to .(1-D)
+        logits = logits + (move - move2)
+
+        logits = logits - logits.mean(dim=-1, keepdim=True)
+        prob = torch.nn.functional.softmax(logits / self.temperature, dim=-1)
+        action = action - prob.detach() + prob
+        return action.reshape(logits.shape)

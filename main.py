@@ -60,11 +60,13 @@ def train(config: argparse.Namespace):
     )
 
     gradient_estimator = ...
-    match config.gradient_estimator:
+    match config.gradient_estimator: # TODO: Pass parameters better
         case "stgs":
             gradient_estimator = gradient_estimators.STGS(config.gumbel_temp)
         case "grmck":
             gradient_estimator = gradient_estimators.GRMCK(config.gumbel_temp, config.rao_k)
+        case "gst":
+            gradient_estimator = gradient_estimators.GST(config.gumbel_temp, config.gst_gap)
         case _:
             print("Unknown gradient estimator type")
 
@@ -156,9 +158,11 @@ if __name__ == "__main__":
     parser.add_argument("--eval_iterations", default=100, type=int)
     parser.add_argument("--gumbel_temp", default=1.0, type=float)
     parser.add_argument("--rao_k", default=1, type=int)
-    parser.add_argument("--gradient_estimator", default="stgs", choices=[
+    parser.add_argument("--gst_gap", default=1.0, type=float)
+    parser.add_argument("--gradient_estimator", default="gst", choices=[
         "stgs",
         "grmck",
+        "gst",
     ], type=str)
     parser.add_argument("--policy_regulariser", default=0.001, type=float)
     parser.add_argument("--reward_per_agent", action="store_true")
