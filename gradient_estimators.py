@@ -1,4 +1,7 @@
 import torch
+from torch import Tensor
+from torch.distributions import Gumbel
+from torch.nn.functional import one_hot
 
 def replace_gradient(value, surrogate):
     """Returns `value` but backpropagates gradients through `surrogate`."""
@@ -13,18 +16,14 @@ class STGS(GradientEstimator):
     """
     def __init__(self, temperature):
         self.temperature = temperature
-    
+        self.dist = Gumbel(loc=Tensor([0]), scale=Tensor([1]))
+
     def __call__(self, logits):
-        gumbels = (
-            -torch.empty_like(logits, memory_format=torch.legacy_contiguous_format).exponential_().log()
-        )  # ~Gumbel(0,1)
-        gumbels = (logits + gumbels) / self.temperature  # ~Gumbel(logits,tau)
-        y_soft = gumbels.softmax(-1)
-
-        index = y_soft.max(-1, keepdim=True)[1]
-        y_hard = torch.zeros_like(logits, memory_format=torch.legacy_contiguous_format).scatter_(-1, index, 1.0)
+        gumbels = self.dist.sample(logits.shape).squeeze() # ~ Gumbel (0,1)
+        gumbels = (logits + gumbels) / self.temperature  # ~ Gumbel(logits,tau)
+        y_soft = gumbels.softmax(dim=-1)
+        y_hard = one_hot(y_soft.argmax(dim=-1), num_classes=logits.shape[-1])
         return replace_gradient(value=y_hard, surrogate=y_soft)
-
 
 class GRMCK(GradientEstimator):
     """
