@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
-from torch.distributions import Gumbel
-from torch.nn.functional import one_hot
+from torch.distributions import Gumbel, Exponential, OneHotCategorical
+from torch.nn.functional import one_hot, softmax
 
 def replace_gradient(value, surrogate):
     """Returns `value` but backpropagates gradients through `surrogate`."""
@@ -19,9 +19,9 @@ class STGS(GradientEstimator):
         self.gumbel_dist = Gumbel(loc=Tensor([0]), scale=Tensor([1]))
 
     def __call__(self, logits):
-        gumbel_noise = self.gumbel_dist.sample(logits.shape).squeeze() # ~ Gumbel (0,1)
+        gumbel_noise = self.gumbel_dist.sample(logits.shape).squeeze(-1) # ~ Gumbel (0,1)
         perturbed_logits = (logits + gumbel_noise) / self.temperature  # ~ Gumbel(logits,tau)
-        y_soft = perturbed_logits.softmax(dim=-1)
+        y_soft = softmax(perturbed_logits, dim=-1)
         y_hard = one_hot(y_soft.argmax(dim=-1), num_classes=logits.shape[-1])
         return replace_gradient(value=y_hard, surrogate=y_soft)
 
@@ -34,27 +34,27 @@ class GRMCK(GradientEstimator):
     def __init__(self, temperature, kk):
         self.temperature = temperature
         self.kk = kk
+        self.exp_dist = Exponential(rate=Tensor([1]))
 
+    @torch.no_grad()
     def _conditional_gumbel(self, logits, DD):
         """Outputs k samples of Q = StandardGumbel(), such that argmax(logits
         + Q) is given by D (one hot vector)."""
         # iid. exponential
-        EE = torch.distributions.exponential.Exponential(rate=torch.ones_like(logits)).sample([self.kk])
+        EE = self.exp_dist.sample([self.kk, *logits.shape]).squeeze(-1)
         # E of the chosen class
         Ei = (DD * EE).sum(dim=-1, keepdim=True)
         # partition function (normalization constant)
         ZZ = logits.exp().sum(dim=-1, keepdim=True)
         # Sampled gumbel-adjusted logits
         adjusted = (DD * (-torch.log(Ei) + torch.log(ZZ)) +
-                    (1 - DD) * -torch.log(EE/torch.exp(logits) + Ei / ZZ))
+                   (1 - DD) * -torch.log(EE/torch.exp(logits) + Ei / ZZ))
         return adjusted - logits
 
     def __call__(self, logits):
-        num_classes = logits.shape[-1]
-        II = torch.distributions.categorical.Categorical(logits=logits).sample()
-        DD = torch.nn.functional.one_hot(II, num_classes).float()
+        DD = OneHotCategorical(logits=logits).sample()
         adjusted = logits + self._conditional_gumbel(logits, DD)
-        surrogate = torch.nn.functional.softmax(adjusted/self.temperature, dim=-1).mean(dim=0)
+        surrogate = softmax(adjusted/self.temperature, dim=-1).mean(dim=0)
         return replace_gradient(DD, surrogate)
 
 class GST(GradientEstimator):
