@@ -67,22 +67,16 @@ class GST(GradientEstimator):
         self.temperature = temperature
         self.gap = gap
 
+    @torch.no_grad()
+    def _calculate_movements(self, logits, DD):
+        max_logit = logits.max(dim=-1, keepdim=True)[0]
+        selected_logit = torch.gather(logits, dim=-1, index=DD.argmax(dim=-1, keepdim=True))
+        m1 = (max_logit - selected_logit) * DD
+        m2 = (logits + self.gap - max_logit).clamp(min=0.0) * (1 - DD)
+        return m1, m2
+
     def __call__(self, logits):
-        logits_cpy = logits.detach()
-        probs = torch.nn.functional.softmax(logits_cpy, dim=-1)
-        mm = torch.distributions.one_hot_categorical.OneHotCategorical(probs = probs)  
-        action = mm.sample() 
-        argmax = probs.argmax(dim=-1, keepdim=True)
-        
-        action_bool = action.bool()
-        max_logits = torch.gather(logits_cpy, -1, argmax)
-        move = (max_logits - logits_cpy)*action
-
-        move2 = ( logits_cpy + (-max_logits + self.gap) ).clamp(min=0.0)
-        move2[action_bool] = 0.0 # Equivalent to .(1-D)
-        logits = logits + (move - move2)
-
-        logits = logits - logits.mean(dim=-1, keepdim=True)
-        prob = torch.nn.functional.softmax(logits / self.temperature, dim=-1)
-        action = action - prob.detach() + prob
-        return action.reshape(logits.shape)
+        DD = OneHotCategorical(logits=logits).sample()
+        m1, m2 = self._calculate_movements(logits, DD)
+        surrogate = softmax(logits + m1 - m2, dim=-1)
+        return replace_gradient(DD, surrogate)
