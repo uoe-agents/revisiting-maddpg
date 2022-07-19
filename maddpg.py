@@ -86,7 +86,7 @@ class MADDPG:
                 target_actions_per_agent=target_actions_one_hot,
                 sampled_actions_per_agent=sampled_actions_one_hot,
                 rewards=rewards[ii].unsqueeze(dim=1),
-                dones=np.expand_dims(sample['dones'][ii], axis=1),
+                dones=sample['dones'][ii].unsqueeze(dim=1),
                 gamma=self.gamma,
             )
 

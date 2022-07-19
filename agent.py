@@ -63,7 +63,7 @@ class Agent:
         sampled_actions = torch.concat(sampled_actions_per_agent, axis=1)
         
         Q_next_target = self.critic(torch.concat((all_nobs, target_actions), dim=1))
-        target_ys = torch.as_tensor(rewards) + torch.as_tensor((1 - dones) * gamma) * Q_next_target
+        target_ys = rewards + (1 - dones) * gamma * Q_next_target
         behaviour_ys = self.critic(torch.concat((all_obs, sampled_actions), dim=1))
         
         loss = F.mse_loss(behaviour_ys, target_ys.detach())
