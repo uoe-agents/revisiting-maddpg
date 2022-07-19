@@ -80,6 +80,7 @@ def train(config: argparse.Namespace):
         gumbel_temp=config.gumbel_temp,
         policy_regulariser=config.policy_regulariser,
         gradient_estimator=gradient_estimator,
+        standardise_rewards=config.standardise_rewards,
     )
 
     # Warm up:
@@ -167,6 +168,7 @@ if __name__ == "__main__":
     ], type=str)
     parser.add_argument("--policy_regulariser", default=0.001, type=float)
     parser.add_argument("--reward_per_agent", action="store_true")
+    parser.add_argument("--standardise_rewards", action="store_true")
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--disable_training", action="store_true")
     parser.add_argument("--wandb_project_name", default="maddpg-sink-project", type=str)

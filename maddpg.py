@@ -3,6 +3,7 @@ import torch
 from agent import Agent
 from typing import List
 import torch.nn.functional as F
+from utils import RunningMeanStd
 
 from gradient_estimators import GradientEstimator
 
@@ -18,6 +19,7 @@ class MADDPG:
         gumbel_temp : float,
         policy_regulariser : float,
         gradient_estimator : GradientEstimator,
+        standardise_rewards : bool,
     ):
         self.n_agents = env.n_agents
         self.gamma = gamma
@@ -39,6 +41,8 @@ class MADDPG:
             )
             for ii in range(self.n_agents)
         ]
+
+        self.return_std = RunningMeanStd(shape=(self.n_agents,)) if standardise_rewards else None
 
     def acts(self, obs: List):
         actions = [self.agents[ii].act_behaviour(obs[ii]) for ii in range(self.n_agents)]
@@ -68,6 +72,12 @@ class MADDPG:
         ] # agent batch actions
 
         # ********
+        # Standardise rewards if requested
+        rewards = sample['rwds']
+        if self.return_std is not None:
+            self.return_std.update(rewards)
+            rewards = ((rewards.T - self.return_std.mean) / torch.sqrt(self.return_std.var)).T
+        # ********
 
         for ii, agent in enumerate(self.agents):
             agent.update_critic(
@@ -75,7 +85,7 @@ class MADDPG:
                 all_nobs=batched_nobs,
                 target_actions_per_agent=target_actions_one_hot,
                 sampled_actions_per_agent=sampled_actions_one_hot,
-                rewards=np.expand_dims(sample['rwds'][ii], axis=1),
+                rewards=rewards[ii].unsqueeze(dim=1),
                 dones=np.expand_dims(sample['dones'][ii], axis=1),
                 gamma=self.gamma,
             )
