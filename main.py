@@ -8,6 +8,7 @@ from env_wrapper import create_env
 from maddpg import MADDPG
 import wandb
 from datetime import date
+from time import time
 import gradient_estimators
 
 def play_episode(
@@ -139,6 +140,10 @@ def train(config: argparse.Namespace):
             pbar.update(episode_steps)
 
     env.close()
+
+    if (config.save_model):
+        torch.save(maddpg, f"{config.model_dir}/maddpg_{int(time())}.pt")
+
     return eval_returns
 
 if __name__ == "__main__":
@@ -159,7 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("--gumbel_temp", default=1.0, type=float)
     parser.add_argument("--rao_k", default=1, type=int)
     parser.add_argument("--gst_gap", default=1.0, type=float)
-    parser.add_argument("--gradient_estimator", default="gst", choices=[
+    parser.add_argument("--gradient_estimator", default="stgs", choices=[
         "stgs",
         "grmck",
         "gst",
@@ -170,6 +175,8 @@ if __name__ == "__main__":
     parser.add_argument("--disable_training", action="store_true")
     parser.add_argument("--wandb_project_name", default="maddpg-sink-project", type=str)
     parser.add_argument("--disable_wandb", action="store_true")
+    parser.add_argument("--save_model", action="store_true")
+    parser.add_argument("--model_dir", default="saved_models", type=str)
 
     config = parser.parse_args()
 
