@@ -29,7 +29,7 @@ class GRMCK(GradientEstimator):
     """
         Gumbel-Rao Monte-Carlo estimator
 
-        Credit: https://github.com/nshepperd/gumbel-rao-pytorch/blob/master/gumbel_rao.py
+        With help from: https://github.com/nshepperd/gumbel-rao-pytorch/blob/master/gumbel_rao.py
     """
     def __init__(self, temperature, kk):
         self.temperature = temperature
@@ -61,7 +61,7 @@ class GST(GradientEstimator):
     """
         Gapped Straight-Through Estimator
 
-        Credit: https://github.com/chijames/GST/blob/267ab3aa202d7a0cfd5b5861bd3dcad87faefd9f/model/basic.py
+        With help from: https://github.com/chijames/GST/blob/267ab3aa202d7a0cfd5b5861bd3dcad87faefd9f/model/basic.py
     """
     def __init__(self, temperature, gap):
         self.temperature = temperature
