@@ -10,6 +10,7 @@ import wandb
 from datetime import date
 from time import time
 import gradient_estimators
+import yaml
 
 def play_episode(
     env,
@@ -153,6 +154,7 @@ def train(config: argparse.Namespace):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--config_file", default="", type=str)
     parser.add_argument("--env", required=True, type=str)
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--warmup_episodes", default=400, type=int)
@@ -185,6 +187,10 @@ if __name__ == "__main__":
     parser.add_argument("--disable_wandb", action="store_true")
 
     config = parser.parse_args()
+
+    if (config.config_file != ""):
+        with open(config.config_file) as ff:
+            vars(config).update( yaml.load(ff, Loader=yaml.FullLoader) ) # yaml takes priority
 
     run = wandb.init(
         project=config.wandb_project_name,
