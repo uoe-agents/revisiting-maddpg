@@ -3,6 +3,9 @@ from torch import Tensor
 from torch.distributions import Gumbel, Exponential, OneHotCategorical
 from torch.nn.functional import one_hot, softmax
 
+GUMBEL_DIST = Gumbel(loc=Tensor([0]), scale=Tensor([1]))
+EXP_DIST = Exponential(rate=Tensor([1]))
+
 def replace_gradient(value, surrogate):
     """Returns `value` but backpropagates gradients through `surrogate`."""
     return surrogate + (value - surrogate).detach()
@@ -16,10 +19,9 @@ class STGS(GradientEstimator):
     """
     def __init__(self, temperature):
         self.temperature = temperature
-        self.gumbel_dist = Gumbel(loc=Tensor([0]), scale=Tensor([1]))
 
     def __call__(self, logits):
-        gumbel_noise = self.gumbel_dist.sample(logits.shape).squeeze(-1) # ~ Gumbel (0,1)
+        gumbel_noise = GUMBEL_DIST.sample(logits.shape).squeeze(-1) # ~ Gumbel (0,1)
         perturbed_logits = (logits + gumbel_noise) / self.temperature  # ~ Gumbel(logits,tau)
         y_soft = softmax(perturbed_logits, dim=-1)
         y_hard = one_hot(y_soft.argmax(dim=-1), num_classes=logits.shape[-1])
@@ -34,14 +36,13 @@ class GRMCK(GradientEstimator):
     def __init__(self, temperature, kk):
         self.temperature = temperature
         self.kk = kk
-        self.exp_dist = Exponential(rate=Tensor([1]))
 
     @torch.no_grad()
     def _conditional_gumbel(self, logits, DD):
         """Outputs k samples of Q = StandardGumbel(), such that argmax(logits
         + Q) is given by D (one hot vector)."""
         # iid. exponential
-        EE = self.exp_dist.sample([self.kk, *logits.shape]).squeeze(-1)
+        EE = EXP_DIST.sample([self.kk, *logits.shape]).squeeze(-1)
         # E of the chosen class
         Ei = (DD * EE).sum(dim=-1, keepdim=True)
         # partition function (normalization constant)

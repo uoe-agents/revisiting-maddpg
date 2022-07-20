@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from agent import Agent
-from typing import List
+from typing import List, Optional
 import torch.nn.functional as F
 from utils import RunningMeanStd
 
@@ -20,6 +20,7 @@ class MADDPG:
         policy_regulariser : float,
         gradient_estimator : GradientEstimator,
         standardise_rewards : bool,
+        pretrained_agents : Optional[ List[Agent] ] = None,
     ):
         self.n_agents = env.n_agents
         self.gamma = gamma
@@ -40,7 +41,7 @@ class MADDPG:
                 gradient_estimator=gradient_estimator,
             )
             for ii in range(self.n_agents)
-        ]
+        ] if pretrained_agents is None else pretrained_agents
 
         self.return_std = RunningMeanStd(shape=(self.n_agents,)) if standardise_rewards else None
 

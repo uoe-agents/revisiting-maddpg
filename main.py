@@ -8,6 +8,7 @@ from env_wrapper import create_env
 from maddpg import MADDPG
 import wandb
 from datetime import date
+from time import time
 import gradient_estimators
 
 def play_episode(
@@ -70,6 +71,9 @@ def train(config: argparse.Namespace):
         case _:
             print("Unknown gradient estimator type")
 
+    pretrained_agents = None if config.pretrained_agents == "" \
+        else torch.load(config.pretrained_agents)
+
     maddpg = MADDPG(
         env=env,
         critic_lr=config.critic_lr,
@@ -81,6 +85,7 @@ def train(config: argparse.Namespace):
         policy_regulariser=config.policy_regulariser,
         gradient_estimator=gradient_estimator,
         standardise_rewards=config.standardise_rewards,
+        pretrained_agents=pretrained_agents,
     )
 
     # Warm up:
@@ -141,6 +146,9 @@ def train(config: argparse.Namespace):
 
     env.close()
 
+    if config.save_agents:
+        torch.save(maddpg.agents, f"maddpg_agents_{int(time())}.pt")
+
     return eval_returns
 
 if __name__ == "__main__":
@@ -169,6 +177,8 @@ if __name__ == "__main__":
     parser.add_argument("--policy_regulariser", default=0.001, type=float)
     parser.add_argument("--reward_per_agent", action="store_true")
     parser.add_argument("--standardise_rewards", action="store_true")
+    parser.add_argument("--save_agents", action="store_true")
+    parser.add_argument("--pretrained_agents", default="", type=str)
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--disable_training", action="store_true")
     parser.add_argument("--wandb_project_name", default="maddpg-sink-project", type=str)
