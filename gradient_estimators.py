@@ -19,9 +19,11 @@ class STGS(GradientEstimator):
     """
     def __init__(self, temperature):
         self.temperature = temperature
+        self.gumbel_dist = Gumbel(loc=Tensor([0]), scale=Tensor([1]))
 
     def __call__(self, logits):
-        gumbel_noise = GUMBEL_DIST.sample(logits.shape).squeeze(-1) # ~ Gumbel (0,1)
+        # gumbel_noise = GUMBEL_DIST.sample(logits.shape).squeeze(-1) # ~ Gumbel (0,1)
+        gumbel_noise = self.gumbel_dist.sample(logits.shape).squeeze(-1) # ~ Gumbel (0,1)
         perturbed_logits = (logits + gumbel_noise) / self.temperature  # ~ Gumbel(logits,tau)
         y_soft = softmax(perturbed_logits, dim=-1)
         y_hard = one_hot(y_soft.argmax(dim=-1), num_classes=logits.shape[-1])
