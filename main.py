@@ -148,7 +148,14 @@ def train(config: argparse.Namespace):
     env.close()
 
     if config.save_agents:
-        torch.save(maddpg.agents, f"saved_agents/maddpg_{config.env}_{int(time())}.pt")
+        path = f"saved_agents/maddpg_{config.env}_{int(time())}.pt"
+        torch.save(maddpg.agents, path)
+
+        run = wandb.init(project=config.wandb_project_name)
+        artifact = wandb.Artifact(name=f"{config.env}_agents", type="agents")
+        artifact.add_file(path)
+        run.log_artifact(artifact)
+        run.finish()
 
     return eval_returns
 
