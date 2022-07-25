@@ -148,7 +148,7 @@ def train(config: argparse.Namespace):
     env.close()
 
     if config.save_agents:
-        torch.save(maddpg.agents, f"maddpg_agents_{int(time())}.pt")
+        torch.save(maddpg.agents, f"saved_agents/maddpg_{config.env}_{int(time())}.pt")
 
     return eval_returns
 
