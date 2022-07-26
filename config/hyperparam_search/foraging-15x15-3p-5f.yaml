@@ -1,0 +1,5 @@
+env: Foraging-15x15-3p-5f-v2
+wandb_project_name: maddpg-hyperparam-search
+total_steps: 3_000_000
+max_episode_length: 25
+standardise_rewards: True

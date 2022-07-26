@@ -53,6 +53,10 @@ def train(config: argparse.Namespace):
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
 
+    if (config.env == ""):
+        print("Environment not set!")
+        return
+
     env = create_env(config.env)
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
     buffer = ReplayBuffer(
@@ -164,39 +168,57 @@ def train(config: argparse.Namespace):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    
+    # Option to override params from config file
     parser.add_argument("--config_file", default="", type=str)
-    parser.add_argument("--env", required=True, type=str)
+    
+    # Set env & seed
+    parser.add_argument("--env", default="", type=str)
     parser.add_argument("--seed", default=0, type=int)
+
+    # Episode length etc.
     parser.add_argument("--warmup_episodes", default=400, type=int)
     parser.add_argument("--total_steps", default=2_000_000, type=int)
     parser.add_argument("--max_episode_length", default=25, type=int)
+    
+    # Core hyperparams
     parser.add_argument("--batch_size", default=512, type=int)
-    parser.add_argument("--hidden_dim_width", default=64, type=int) # TODO: Pass this as a tuple and unpack into n layers in network creation?
+    parser.add_argument("--hidden_dim_width", default=64, type=int)
     parser.add_argument("--critic_lr", default=3e-4, type=float)
     parser.add_argument("--actor_lr", default=3e-4, type=float)
     parser.add_argument("--gradient_clip", default=1.0, type=float)
     parser.add_argument("--gamma", default=0.95, type=float)
-    parser.add_argument("--eval_freq", default=25_000, type=int)
+    parser.add_argument("--soft_update_size", default=0.01, type=float)
+    parser.add_argument("--policy_regulariser", default=0.001, type=float)
+    parser.add_argument("--reward_per_agent", action="store_true")
+    parser.add_argument("--standardise_rewards", action="store_true")
+
+    # When to evaluate performance
+    parser.add_argument("--eval_freq", default=50_000, type=int)
     parser.add_argument("--eval_iterations", default=100, type=int)
-    parser.add_argument("--gumbel_temp", default=1.0, type=float)
-    parser.add_argument("--rao_k", default=1, type=int)
-    parser.add_argument("--gst_gap", default=1.0, type=float)
-    parser.add_argument("--tags_start", default=5.0, type=float)
-    parser.add_argument("--tags_end", default=0.5, type=float)
+
+    # Gradient Estimation hyperparams
     parser.add_argument("--gradient_estimator", default="stgs", choices=[
         "stgs",
         "grmck",
         "gst",
         "tags",
     ], type=str)
-    parser.add_argument("--soft_update_size", default=0.01, type=float)
-    parser.add_argument("--policy_regulariser", default=0.001, type=float)
-    parser.add_argument("--reward_per_agent", action="store_true")
-    parser.add_argument("--standardise_rewards", action="store_true")
+    parser.add_argument("--gumbel_temp", default=1.0, type=float)
+    parser.add_argument("--rao_k", default=1, type=int) # For GRMCK
+    parser.add_argument("--gst_gap", default=1.0, type=float) # For GST
+    parser.add_argument("--tags_start", default=5.0, type=float) # For TAGS
+    parser.add_argument("--tags_end", default=0.5, type=float) # For TAGS
+    
+    # Ability to save & load agents
     parser.add_argument("--save_agents", action="store_true")
     parser.add_argument("--pretrained_agents", default="", type=str)
+
+    # Misc
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--disable_training", action="store_true")
+    
+    # WandB
     parser.add_argument("--wandb_project_name", default="maddpg-sink-project", type=str)
     parser.add_argument("--disable_wandb", action="store_true")
 

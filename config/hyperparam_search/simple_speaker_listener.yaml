@@ -1,0 +1,9 @@
+env: simple_speaker_listener
+wandb_project_name: maddpg-hyperparam-search
+total_steps: 2_000_000
+max_episode_length: 25
+critic_lr: 5e-4
+actor_lr: 5e-4
+policy_regulariser: 0.01
+reward_per_agent: True
+standardise_rewards: True
