@@ -85,7 +85,6 @@ def train(config: argparse.Namespace):
         gradient_clip=config.gradient_clip,
         hidden_dim_width=config.hidden_dim_width,
         gamma=config.gamma,
-        gumbel_temp=config.gumbel_temp,
         policy_regulariser=config.policy_regulariser,
         gradient_estimator=gradient_estimator,
         standardise_rewards=config.standardise_rewards,

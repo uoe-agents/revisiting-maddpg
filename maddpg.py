@@ -16,7 +16,6 @@ class MADDPG:
         gradient_clip : float,
         hidden_dim_width : int,
         gamma : float,
-        gumbel_temp : float,
         policy_regulariser : float,
         gradient_estimator : GradientEstimator,
         standardise_rewards : bool,
@@ -36,7 +35,6 @@ class MADDPG:
                 critic_lr=critic_lr,
                 actor_lr=actor_lr,
                 gradient_clip=gradient_clip,
-                gumbel_temp=gumbel_temp,
                 policy_regulariser=policy_regulariser,
                 gradient_estimator=gradient_estimator,
             )

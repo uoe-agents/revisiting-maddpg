@@ -15,7 +15,6 @@ class Agent:
         critic_lr,
         actor_lr,
         gradient_clip,
-        gumbel_temp,
         policy_regulariser,
         gradient_estimator,
         soft_update_size=0.01,  # TODO: Pass as param
@@ -27,7 +26,6 @@ class Agent:
         self.n_acts = act_dims[self.agent_idx]
         self.n_agents = len(obs_dims)
         self.gradient_clip = gradient_clip
-        self.gumbel_temp = gumbel_temp
         self.policy_regulariser = policy_regulariser
         self.gradient_estimator = gradient_estimator
         # -----------
