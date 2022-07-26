@@ -85,6 +85,7 @@ def train(config: argparse.Namespace):
         gradient_clip=config.gradient_clip,
         hidden_dim_width=config.hidden_dim_width,
         gamma=config.gamma,
+        soft_update_size=config.soft_update_size,
         policy_regulariser=config.policy_regulariser,
         gradient_estimator=gradient_estimator,
         standardise_rewards=config.standardise_rewards,
@@ -188,6 +189,7 @@ if __name__ == "__main__":
         "gst",
         "tags",
     ], type=str)
+    parser.add_argument("--soft_update_size", default=0.01, type=float)
     parser.add_argument("--policy_regulariser", default=0.001, type=float)
     parser.add_argument("--reward_per_agent", action="store_true")
     parser.add_argument("--standardise_rewards", action="store_true")

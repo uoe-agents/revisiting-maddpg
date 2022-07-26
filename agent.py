@@ -15,9 +15,9 @@ class Agent:
         critic_lr,
         actor_lr,
         gradient_clip,
+        soft_update_size,
         policy_regulariser,
         gradient_estimator,
-        soft_update_size=0.01,  # TODO: Pass as param
         # more TODO
     ):
         self.agent_idx = agent_idx

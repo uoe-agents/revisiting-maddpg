@@ -16,6 +16,7 @@ class MADDPG:
         gradient_clip : float,
         hidden_dim_width : int,
         gamma : float,
+        soft_update_size : float,
         policy_regulariser : float,
         gradient_estimator : GradientEstimator,
         standardise_rewards : bool,
@@ -35,6 +36,7 @@ class MADDPG:
                 critic_lr=critic_lr,
                 actor_lr=actor_lr,
                 gradient_clip=gradient_clip,
+                soft_update_size=soft_update_size,
                 policy_regulariser=policy_regulariser,
                 gradient_estimator=gradient_estimator,
             )
