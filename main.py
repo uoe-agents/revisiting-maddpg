@@ -62,17 +62,18 @@ def train(config: argparse.Namespace):
     )
 
     gradient_estimator = ...
-    match config.gradient_estimator: # TODO: Pass parameters better
+    match config.gradient_estimator:
         case "stgs":
             gradient_estimator = gradient_estimators.STGS(config.gumbel_temp)
         case "grmck":
             gradient_estimator = gradient_estimators.GRMCK(config.gumbel_temp, config.rao_k)
         case "gst":
-            gradient_estimator = gradient_estimators.GST(config.gumbel_temp, config.gst_gap)
+            gradient_estimator = gradient_estimators.GST(config.gst_gap)
         case "tags":
             gradient_estimator = gradient_estimators.TAGS(config.tags_start, config.tags_end, config.total_steps / config.max_episode_length)
         case _:
             print("Unknown gradient estimator type")
+            return None
 
     pretrained_agents = None if config.pretrained_agents == "" \
         else torch.load(config.pretrained_agents)

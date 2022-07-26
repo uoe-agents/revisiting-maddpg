@@ -76,8 +76,7 @@ class GST(GradientEstimator):
 
         With help from: https://github.com/chijames/GST/blob/267ab3aa202d7a0cfd5b5861bd3dcad87faefd9f/model/basic.py
     """
-    def __init__(self, temperature, gap):
-        self.temperature = temperature
+    def __init__(self, gap):
         self.gap = gap
 
     @torch.no_grad()
