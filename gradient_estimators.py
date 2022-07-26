@@ -21,7 +21,7 @@ class STGS(GradientEstimator):
     def __init__(self, temperature):
         self.temperature = temperature
 
-    def __call__(self, logits):
+    def __call__(self, logits, need_gradients=None):
         gumbel_noise = GUMBEL_DIST.sample(logits.shape).squeeze(-1) # ~ Gumbel (0,1)
         perturbed_logits = (logits + gumbel_noise) / self.temperature  # ~ Gumbel(logits,tau)
         y_soft = softmax(perturbed_logits, dim=-1)
@@ -64,11 +64,14 @@ class GRMCK(GradientEstimator):
                    (1 - DD) * -torch.log(EE/torch.exp(logits) + Ei / ZZ))
         return adjusted - logits
 
-    def __call__(self, logits):
+    def __call__(self, logits, need_gradients=True):
         DD = OneHotCategorical(logits=logits).sample()
-        adjusted = logits + self._conditional_gumbel(logits, DD)
-        surrogate = softmax(adjusted/self.temperature, dim=-1).mean(dim=0)
-        return replace_gradient(DD, surrogate)
+        if need_gradients:
+            adjusted = logits + self._conditional_gumbel(logits, DD)
+            surrogate = softmax(adjusted/self.temperature, dim=-1).mean(dim=0)
+            return replace_gradient(DD, surrogate)
+        else:
+            return DD
 
 class GST(GradientEstimator):
     """
@@ -87,8 +90,11 @@ class GST(GradientEstimator):
         m2 = (logits + self.gap - max_logit).clamp(min=0.0) * (1 - DD)
         return m1, m2
 
-    def __call__(self, logits):
+    def __call__(self, logits, need_gradients=True):
         DD = OneHotCategorical(logits=logits).sample()
-        m1, m2 = self._calculate_movements(logits, DD)
-        surrogate = softmax(logits + m1 - m2, dim=-1)
-        return replace_gradient(DD, surrogate)
+        if need_gradients:
+            m1, m2 = self._calculate_movements(logits, DD)
+            surrogate = softmax(logits + m1 - m2, dim=-1)
+            return replace_gradient(DD, surrogate)
+        else:
+            return DD

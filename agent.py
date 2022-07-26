@@ -48,12 +48,12 @@ class Agent:
 
     def act_behaviour(self, obs):
         policy_output = self.policy(Tensor(obs))
-        gs_output = self.gradient_estimator(policy_output)
+        gs_output = self.gradient_estimator(policy_output, need_gradients=False)
         return torch.argmax(gs_output, dim=-1)
 
     def act_target(self, obs):
         policy_output = self.policy(Tensor(obs))
-        gs_output = self.gradient_estimator(policy_output)
+        gs_output = self.gradient_estimator(policy_output, need_gradients=False)
         return torch.argmax(gs_output, dim=-1)
 
     def update_critic(self, all_obs, all_nobs, target_actions_per_agent, sampled_actions_per_agent, rewards, dones, gamma):
