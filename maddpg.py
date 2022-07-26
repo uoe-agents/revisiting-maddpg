@@ -44,6 +44,7 @@ class MADDPG:
         ] if pretrained_agents is None else pretrained_agents
 
         self.return_std = RunningMeanStd(shape=(self.n_agents,)) if standardise_rewards else None
+        self.gradient_estimator = gradient_estimator # Keep reference to GE object
 
     def acts(self, obs: List):
         actions = [self.agents[ii].act_behaviour(obs[ii]) for ii in range(self.n_agents)]
@@ -99,5 +100,7 @@ class MADDPG:
 
         for agent in self.agents:
             agent.soft_update()
+
+        self.gradient_estimator.update_state() # Update GE state, if necessary
 
         return None

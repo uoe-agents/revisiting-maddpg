@@ -10,8 +10,9 @@ def replace_gradient(value, surrogate):
     """Returns `value` but backpropagates gradients through `surrogate`."""
     return surrogate + (value - surrogate).detach()
 
-class GradientEstimator: # TODO : Actually leverage parent class
-    pass
+class GradientEstimator:
+    def update_state(self):
+        ...
 
 class STGS(GradientEstimator):
     """
@@ -26,6 +27,17 @@ class STGS(GradientEstimator):
         y_soft = softmax(perturbed_logits, dim=-1)
         y_hard = one_hot(y_soft.argmax(dim=-1), num_classes=logits.shape[-1])
         return replace_gradient(value=y_hard, surrogate=y_soft)
+
+class TAGS(STGS):
+    """
+        Temperature-Annealed (Linear) Straight-Through Gumbel Softmax estimator
+    """
+    def __init__(self, start_temp, end_temp, nn):
+        super().__init__(start_temp)
+        self.gradient = (start_temp - end_temp) / nn
+
+    def update_state(self):
+        self.temperature -= self.gradient
 
 class GRMCK(GradientEstimator):
     """
