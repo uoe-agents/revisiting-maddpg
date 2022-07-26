@@ -79,7 +79,8 @@ class GST(GradientEstimator):
 
         With help from: https://github.com/chijames/GST/blob/267ab3aa202d7a0cfd5b5861bd3dcad87faefd9f/model/basic.py
     """
-    def __init__(self, gap):
+    def __init__(self, temperature, gap):
+        self.temperature = temperature
         self.gap = gap
 
     @torch.no_grad()
@@ -94,7 +95,7 @@ class GST(GradientEstimator):
         DD = OneHotCategorical(logits=logits).sample()
         if need_gradients:
             m1, m2 = self._calculate_movements(logits, DD)
-            surrogate = softmax(logits + m1 - m2, dim=-1)
+            surrogate = softmax((logits + m1 - m2) / self.temperature, dim=-1)
             return replace_gradient(DD, surrogate)
         else:
             return DD

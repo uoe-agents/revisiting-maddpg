@@ -68,7 +68,7 @@ def train(config: argparse.Namespace):
         case "grmck":
             gradient_estimator = gradient_estimators.GRMCK(config.gumbel_temp, config.rao_k)
         case "gst":
-            gradient_estimator = gradient_estimators.GST(config.gst_gap)
+            gradient_estimator = gradient_estimators.GST(config.gumbel_temp, config.gst_gap)
         case "tags":
             gradient_estimator = gradient_estimators.TAGS(config.tags_start, config.tags_end, config.total_steps / config.max_episode_length)
         case _:
