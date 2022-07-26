@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from torch import Tensor
 from torch.distributions import Gumbel, Exponential, OneHotCategorical
@@ -30,14 +31,15 @@ class STGS(GradientEstimator):
 
 class TAGS(STGS):
     """
-        Temperature-Annealed (Linear) Straight-Through Gumbel Softmax estimator
+        Temperature-Annealed Straight-Through Gumbel Softmax estimator
+        Annealing scheme: Decaying exponential
     """
     def __init__(self, start_temp, end_temp, nn):
         super().__init__(start_temp)
-        self.gradient = (start_temp - end_temp) / nn
+        self.multiplier = (end_temp / start_temp) ** (1 / nn)
 
     def update_state(self):
-        self.temperature -= self.gradient
+        self.temperature *= self.multiplier
 
 class GRMCK(GradientEstimator):
     """
