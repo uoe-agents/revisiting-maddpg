@@ -119,8 +119,9 @@ def train(config: argparse.Namespace):
             )
 
             if (not config.disable_training):
-                sample = buffer.sample()
-                maddpg.update(sample)
+                for _ in range(config.train_repeats):
+                    sample = buffer.sample()
+                    maddpg.update(sample)
 
             if (config.eval_freq != 0 and (eval_count * config.eval_freq) <= elapsed_steps):
                 eval_count += 1
@@ -180,6 +181,7 @@ if __name__ == "__main__":
     parser.add_argument("--warmup_episodes", default=400, type=int)
     parser.add_argument("--total_steps", default=2_000_000, type=int)
     parser.add_argument("--max_episode_length", default=25, type=int)
+    parser.add_argument("--train_repeats", default=1, type=int)
     
     # Core hyperparams
     parser.add_argument("--batch_size", default=512, type=int)
