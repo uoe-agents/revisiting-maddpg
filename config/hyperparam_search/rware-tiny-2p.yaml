@@ -5,3 +5,4 @@ max_episode_length: 500
 critic_lr: 5.e-4
 actor_lr: 5.e-4
 standardise_rewards: True
+train_repeats: 10
