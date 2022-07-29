@@ -1,0 +1,4 @@
+base: _rware-base.yaml
+gradient_estimator: grmck
+gumbel_temp: 0.7
+rao_k: 5

@@ -1,0 +1,3 @@
+base: _mpe-base.yaml
+gradient_estimator: gst
+gumbel_temp: 0.6

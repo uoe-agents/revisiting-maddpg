@@ -1,0 +1,4 @@
+base: _mpe-base.yaml
+gradient_estimator: grmck
+gumbel_temp: 1.0
+rao_k: 5

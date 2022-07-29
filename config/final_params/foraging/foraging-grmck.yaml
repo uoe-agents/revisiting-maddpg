@@ -1,0 +1,4 @@
+base: _foraging-base.yaml
+gradient_estimator: grmck
+gumbel_temp: 0.5
+rao_k: 10

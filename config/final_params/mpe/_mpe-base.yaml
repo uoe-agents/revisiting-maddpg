@@ -1,0 +1,9 @@
+wandb_project_name: maddpg-final
+total_steps: 2_000_000
+max_episode_length: 25
+hidden_dim_width: 128
+critic_lr: 5.e-4
+actor_lr: 5.e-4
+policy_regulariser: 0.01
+standardise_rewards: True
+reward_per_agent: True
