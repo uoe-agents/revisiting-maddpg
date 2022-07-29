@@ -122,7 +122,8 @@ def train(config: argparse.Namespace):
             if (not config.disable_training):
                 for _ in range(config.train_repeats):
                     sample = buffer.sample()
-                    maddpg.update(sample)
+                    if sample is not None:
+                        maddpg.update(sample)
 
             if (config.eval_freq != 0 and (eval_count * config.eval_freq) <= elapsed_steps):
                 eval_count += 1
