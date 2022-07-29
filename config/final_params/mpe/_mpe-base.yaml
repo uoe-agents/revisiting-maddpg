@@ -7,3 +7,4 @@ actor_lr: 5.e-4
 policy_regulariser: 0.01
 standardise_rewards: True
 reward_per_agent: True
+save_agents: True
