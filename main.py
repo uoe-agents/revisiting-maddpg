@@ -160,12 +160,15 @@ def train(config: argparse.Namespace):
     env.close()
 
     if config.save_agents:
-        path = f"saved_agents/maddpg_{config.env}_{int(time())}.pt"
-        torch.save(maddpg.agents, path)
+        save_path = path.join("saved_agents",f"maddpg_{config.env}_{int(time())}.pt")
+        torch.save(maddpg.agents, save_path)
 
-        run = wandb.init(project=config.wandb_project_name)
+        run = wandb.init(
+            project=config.wandb_project_name,
+            mode="disabled" if (config.disable_wandb) else "online",
+        )
         artifact = wandb.Artifact(name=f"{config.env}_agents", type="agents")
-        artifact.add_file(path)
+        artifact.add_file(save_path)
         run.log_artifact(artifact)
         run.finish()
 
