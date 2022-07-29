@@ -11,6 +11,7 @@ from datetime import date
 from time import time
 import gradient_estimators
 import yaml
+import os.path as path
 
 def play_episode(
     env,
@@ -230,8 +231,11 @@ if __name__ == "__main__":
     config = parser.parse_args()
 
     if (config.config_file != ""):
-        with open(config.config_file) as ff:
-            vars(config).update( yaml.load(ff, Loader=yaml.FullLoader) ) # yaml takes priority
+        with open(config.config_file) as cf:
+            if 'base' in (yaml_config := yaml.load(cf, Loader=yaml.FullLoader)):
+                with open(path.join(path.dirname(config.config_file), yaml_config['base'])) as cf_base:
+                    vars(config).update( yaml.load(cf_base, Loader=yaml.FullLoader) )
+            vars(config).update( yaml_config ) # Child takes update preference
 
     run = wandb.init(
         project=config.wandb_project_name,
