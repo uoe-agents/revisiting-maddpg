@@ -139,7 +139,10 @@ def train(config: argparse.Namespace):
                 
                 eval_returns.append( np.mean(timestep_returns) )
                 pbar.set_postfix(eval_return=f"{np.round(np.mean(timestep_returns), 2)}", refresh=True)
-                wandb.log({f"Return": np.mean(timestep_returns)}, step=elapsed_steps)
+                wandb.log({
+                    f"Return": np.mean(timestep_returns),
+                    f"Timestep": int(time()),
+                }, step=elapsed_steps)
 
                 if config.render:
                     play_episode(
