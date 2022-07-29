@@ -1,6 +1,8 @@
 import argparse
+from typing import List
 import torch
 from tqdm import tqdm; BAR_FORMAT = "{l_bar}{bar:50}{r_bar}{bar:-10b}"
+from agent import Agent
 from buffer import ReplayBuffer
 import numpy as np
 import scipy.stats as st
@@ -8,14 +10,14 @@ from env_wrapper import create_env
 from maddpg import MADDPG
 import wandb
 from datetime import date
-from time import time
+from time import time, sleep
 import gradient_estimators
 import yaml
 import os.path as path
 
 def play_episode(
     env,
-    buffer : ReplayBuffer,
+    buffer : ReplayBuffer | None,
     max_episode_length,
     action_fn,
     render=False,
@@ -28,7 +30,9 @@ def play_episode(
     episode_return = 0
 
     while not any(dones):
-        if (render): env.render()
+        if (render):
+            env.render()
+            sleep(0.03)
 
         acts = action_fn(obs)
         nobs, rwds, dones, _ = env.step(np.array(acts))
@@ -37,13 +41,14 @@ def play_episode(
         if (episode_steps >= max_episode_length): # Some envs don't have done flags,
             dones = [True] * env.n_agents #  so manually set them here
 
-        buffer.store(
-            obs=obs,
-            acts=acts,
-            rwds=rwds,
-            nobs=nobs,
-            dones=dones,
-        )
+        if buffer is not None:
+            buffer.store(
+                obs=obs,
+                acts=acts,
+                rwds=rwds,
+                nobs=nobs,
+                dones=dones,
+            )
         episode_return += rwds[0] if reward_per_agent else sum(rwds)
         obs = nobs
 
@@ -223,6 +228,7 @@ if __name__ == "__main__":
     # Ability to save & load agents
     parser.add_argument("--save_agents", action="store_true")
     parser.add_argument("--pretrained_agents", default="", type=str)
+    parser.add_argument("--just_demo_agents", action="store_true")
 
     # Misc
     parser.add_argument("--render", action="store_true")
@@ -233,6 +239,39 @@ if __name__ == "__main__":
     parser.add_argument("--disable_wandb", action="store_true")
 
     config = parser.parse_args()
+
+    # TODO: This is a bit gimmicky, but works for now
+    if (config.just_demo_agents and config.pretrained_agents != ""):
+        env = create_env(config.env)
+        agents : List[Agent] = torch.load(config.pretrained_agents)
+        maddpg = MADDPG(
+            env=env,
+            pretrained_agents=agents,
+            # ———
+            # Not needed for demoing
+            critic_lr=0,
+            actor_lr=0,
+            gradient_clip=0,
+            hidden_dim_width=0,
+            gamma=0,
+            soft_update_size=0,
+            policy_regulariser=0,
+            gradient_estimator=None,
+            standardise_rewards=False,
+            # ———
+        )
+        for _ in range(100):
+            play_episode(
+                env=env,
+                buffer=None,
+                max_episode_length=config.max_episode_length,
+                action_fn=maddpg.acts,
+                render=True,
+            )
+            if (input() == "e"): # Pause between renders
+                break
+        env.close()
+        exit(0)
 
     if (config.config_file != ""):
         with open(config.config_file) as cf:
