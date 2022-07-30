@@ -34,12 +34,16 @@ class TAGS(STGS):
         Temperature-Annealed Straight-Through Gumbel Softmax estimator
         Annealing scheme: Decaying exponential
     """
-    def __init__(self, start_temp, end_temp, nn):
+    def __init__(self, start_temp, end_temp, period):
         super().__init__(start_temp)
-        self.multiplier = (end_temp / start_temp) ** (1 / nn)
+        self.multiplier = (end_temp / start_temp) ** (1 / period)
+        self.period = period
+        self.updates = 0
 
     def update_state(self):
-        self.temperature *= self.multiplier
+        if (self.updates < self.period):
+            self.temperature *= self.multiplier
+        self.updates += 1
 
 class GRMCK(GradientEstimator):
     """

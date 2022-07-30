@@ -80,7 +80,7 @@ def train(config: argparse.Namespace):
         case "gst":
             gradient_estimator = gradient_estimators.GST(config.gumbel_temp, config.gst_gap)
         case "tags":
-            gradient_estimator = gradient_estimators.TAGS(config.tags_start, config.tags_end, config.total_steps / config.max_episode_length)
+            gradient_estimator = gradient_estimators.TAGS(config.tags_start, config.tags_end, config.tags_period)
         case _:
             print("Unknown gradient estimator type")
             return None
@@ -224,6 +224,7 @@ if __name__ == "__main__":
     parser.add_argument("--gst_gap", default=1.0, type=float) # For GST
     parser.add_argument("--tags_start", default=5.0, type=float) # For TAGS
     parser.add_argument("--tags_end", default=0.5, type=float) # For TAGS
+    parser.add_argument("--tags_period", default=2_000_000, type=int) # For TAGS
     
     # Ability to save & load agents
     parser.add_argument("--save_agents", action="store_true")
