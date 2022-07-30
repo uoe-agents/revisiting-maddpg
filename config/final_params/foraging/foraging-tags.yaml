@@ -1,5 +1,5 @@
 base: _foraging-base.yaml
-gradient_estimator: stgs
+gradient_estimator: tags
 tags_start: 4.0
 tags_end: 0.1
 tags_period: 3_000_000
