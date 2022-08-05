@@ -7,3 +7,4 @@ actor_lr: 3.e-4
 policy_regulariser: 0.001
 standardise_rewards: True
 save_agents: True
+offline_wandb: True
