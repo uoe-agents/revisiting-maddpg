@@ -9,6 +9,8 @@ import scipy.stats as st
 from env_wrapper import create_env
 from maddpg import MADDPG
 import wandb
+from wandb.sdk.wandb_run import Run
+from wandb.sdk.lib import RunDisabled
 from datetime import date
 from time import time, sleep
 import gradient_estimators
@@ -54,7 +56,7 @@ def play_episode(
 
     return episode_return, episode_steps
 
-def train(config: argparse.Namespace):
+def train(config: argparse.Namespace, wandb_run: Run | RunDisabled | None):
     # Set seeds
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
@@ -169,14 +171,10 @@ def train(config: argparse.Namespace):
         save_path = path.join("saved_agents",f"maddpg_{config.env}_{int(time())}.pt")
         torch.save(maddpg.agents, save_path)
 
-        run = wandb.init(
-            project=config.wandb_project_name,
-            mode="disabled" if (config.disable_wandb) else "online",
-        )
         artifact = wandb.Artifact(name=f"{config.env}_agents", type="agents")
         artifact.add_file(save_path)
-        run.log_artifact(artifact)
-        run.finish()
+        wandb_run.log_artifact(artifact)
+        wandb_run.finish()
 
     return eval_returns
 
@@ -238,6 +236,7 @@ if __name__ == "__main__":
     # WandB
     parser.add_argument("--wandb_project_name", default="maddpg-sink-project", type=str)
     parser.add_argument("--disable_wandb", action="store_true")
+    parser.add_argument("--offline_wandb", action="store_true")
 
     config = parser.parse_args()
 
@@ -281,12 +280,18 @@ if __name__ == "__main__":
                     vars(config).update( yaml.load(cf_base, Loader=yaml.FullLoader) )
             vars(config).update( yaml_config ) # Child takes update preference
 
-    run = wandb.init(
+    wandb_mode = "online"
+    if config.disable_wandb: # Disabling takes priority
+        wandb_mode = "disabled"
+    elif config.offline_wandb: # Don't sync to wandb servers during run
+        wandb_mode = "offline"
+
+    wandb_run = wandb.init(
         project=config.wandb_project_name,
         name=f"{str(date.today())}-{config.env}-{config.seed}",
         entity="callumtilbury",
-        mode="disabled" if (config.disable_wandb) else "online",
+        mode=wandb_mode,
     )
     wandb.config.update(config)
 
-    _ = train(config)
+    _ = train(config, wandb_run)
