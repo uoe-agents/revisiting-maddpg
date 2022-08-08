@@ -1,5 +1,5 @@
 wandb_project_name: maddpg-final
-total_steps: 10_000_000
+total_steps: 7_500_000
 max_episode_length: 25
 hidden_dim_width: 64
 critic_lr: 3.e-4
