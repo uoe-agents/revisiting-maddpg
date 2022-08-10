@@ -68,7 +68,7 @@ def train(config: argparse.Namespace, wandb_run: Run | RunDisabled | None):
     env = create_env(config.env)
     observation_dims = np.array([obs.shape[0] for obs in env.observation_space])
     buffer = ReplayBuffer(
-        capacity=10e6,
+        capacity=config.replay_buffer_size,
         obs_dims=observation_dims, # TODO: change format of the replay buffer input??
         batch_size=config.batch_size,
     )
@@ -190,6 +190,7 @@ if __name__ == "__main__":
 
     # Episode length etc.
     parser.add_argument("--warmup_episodes", default=400, type=int)
+    parser.add_argument("--replay_buffer_size", default=2_000_000, type=int)
     parser.add_argument("--total_steps", default=2_000_000, type=int)
     parser.add_argument("--max_episode_length", default=25, type=int)
     parser.add_argument("--train_repeats", default=1, type=int)
