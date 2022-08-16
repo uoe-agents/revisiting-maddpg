@@ -131,6 +131,12 @@ def train(config: argparse.Namespace, wandb_run: Run | RunDisabled | None):
                     sample = buffer.sample()
                     if sample is not None:
                         maddpg.update(sample)
+                if config.log_grad_variance and elapsed_steps % config.log_grad_variance_interval == 0:
+                    for agent in maddpg.agents:
+                        for name, param in agent.policy.named_parameters():
+                            wandb.log({
+                                f"{agent.agent_idx}-{name}-grad" : torch.var(param.grad).item(),
+                            }, step=elapsed_steps)
 
             if (config.eval_freq != 0 and (eval_count * config.eval_freq) <= elapsed_steps):
                 eval_count += 1
@@ -238,6 +244,8 @@ if __name__ == "__main__":
     parser.add_argument("--wandb_project_name", default="maddpg-sink-project", type=str)
     parser.add_argument("--disable_wandb", action="store_true")
     parser.add_argument("--offline_wandb", action="store_true")
+    parser.add_argument("--log_grad_variance", action="store_true")
+    parser.add_argument("--log_grad_variance_interval", default=1000, type=int)
 
     config = parser.parse_args()
 
