@@ -22,6 +22,7 @@ for dim in dims:
     logits = torch.randn([1,dim])
     if first_time:
         print(str(dim) + ",x",end=",")
+        first_time = False
     else:
         print(str(dim) + ",",end=",")
     
