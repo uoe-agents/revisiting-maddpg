@@ -2,6 +2,8 @@
 
 Exploration of alternative gradient estimation techniques in MADDPG.
 
+Repository link: <https://github.com/callumtilbury/revisiting-maddpg/>
+
 Usage:
 ```
 python main.py [-h] [--config_file CONFIG_FILE] [--env ENV] [--seed SEED] [--warmup_episodes WARMUP_EPISODES] [--replay_buffer_size REPLAY_BUFFER_SIZE]
