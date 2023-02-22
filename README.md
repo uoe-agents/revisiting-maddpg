@@ -25,7 +25,7 @@ Hyperparameter details for the various gradient estimation techniques, with the 
 | GRMCK | $\tau \in(0,1]; K= \{ 5,10,50 \}$ | $0.5;10$ | $0.7;5$ |
 | GST | $\tau \in(0,1]$  | $0.7$ | $0.7$ |
 
-## Code Usage:
+## Code Usage
 ```
 python main.py [-h] [--config_file CONFIG_FILE] [--env ENV] [--seed SEED] [--warmup_episodes WARMUP_EPISODES] [--replay_buffer_size REPLAY_BUFFER_SIZE]
                [--total_steps TOTAL_STEPS] [--max_episode_length MAX_EPISODE_LENGTH] [--train_repeats TRAIN_REPEATS] [--batch_size BATCH_SIZE]
